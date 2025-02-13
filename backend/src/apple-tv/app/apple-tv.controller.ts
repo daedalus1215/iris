@@ -1,5 +1,5 @@
 import { Controller, Post } from '@nestjs/common';
-import { AppleTvService } from './apple-tv.service';
+import { AppleTvService } from '../domain/apple-tv.service';
 
 @Controller('apple-tv')
 export class AppleTvController {
