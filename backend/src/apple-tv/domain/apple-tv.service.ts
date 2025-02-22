@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable, NotAcceptableException } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { spawn } from 'child_process';
 
 const execAsync = promisify(exec);
 
@@ -31,15 +32,17 @@ export class AppleTvService {
       pairingState.set(pairingId, { mac, protocol });
 
       // Start pairing as a detached process
-      const pairProcess = exec(
-        `atvremote --id ${mac} --protocol ${protocol} pair`,
-      );
+
+      const pairProcess = spawn('atvremote', ['--id', mac, '--protocol', protocol, 'pair'], {
+        detached: true,
+        stdio: 'ignore', // Ignore output since we're not handling it here
+      });
 
       pairProcess.unref(); // Allow the process to continue in the background
 
       console.log('pairingId', pairingId);
       return {
-        message: 'Code required',
+        message: 'Code Inc',
         pairingId, // Return pairing ID to be used in the next request
       };
     } catch (error) {
@@ -51,7 +54,7 @@ export class AppleTvService {
     const state = pairingState.get(pairingId);
     console.log('state', state);
     if (!state) {
-      throw new Error('Invalid pairing ID or pairing has expired.');
+      throw new NotAcceptableException('Invalid pairing ID or pairing has expired.');
     }
   
     const { mac, protocol } = state;
@@ -66,10 +69,10 @@ export class AppleTvService {
         pairingState.delete(pairingId); 
         return { message: 'Pairing successful', credentials: newCredentials };
       }
-  
-      throw new Error('Pairing failed. Incorrect code?');
+      throw new NotAcceptableException('Pairing failed. Incorrect code?');
     } catch (error) {
-      throw new Error(`Failed to complete pairing: ${error.message}`);
+      console.log(`Failed to complete pairing: ${error.message}`)
+      throw new NotAcceptableException(`Failed to complete pairing: ${error.message}`);
     }
   }
 
