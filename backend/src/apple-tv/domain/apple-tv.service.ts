@@ -144,6 +144,54 @@ export class AppleTvService {
     return this.executeCommand(mac, 'menu');
   }
 
+  async click(mac: string) {
+    return this.executeCommand(mac, 'click');
+  }
+
+  async home(mac: string) {
+    return this.executeCommand(mac, 'home');
+  }
+
+  async holdHome(mac: string) {
+    return this.executeCommand(mac, 'hold_home');
+  }
+
+  async play(mac: string) {
+    return this.executeCommand(mac, 'play');
+  }
+
+  async pause(mac: string) {
+    return this.executeCommand(mac, 'pause');
+  }
+
+  async next(mac: string) {
+    return this.executeCommand(mac, 'next');
+  }
+
+  async previous(mac: string) {
+    return this.executeCommand(mac, 'previous');
+  }
+
+  async volumeUp(mac: string) {
+    return this.executeCommand(mac, 'volume_up');
+  }
+
+  async volumeDown(mac: string) {
+    return this.executeCommand(mac, 'volume_down');
+  }
+
+  async powerOff(mac: string) {
+    return this.executeCommand(mac, 'poweroff');
+  }
+
+  async powerOn(mac: string) {
+    return this.executeCommand(mac, 'poweron');
+  }
+
+  async sleep(mac: string) {
+    return this.executeCommand(mac, 'sleep');
+  }
+
   private async executeCommand(mac: string, command: string) {
     return execAsync(`atvremote --id ${mac} ${command}`);
   }
