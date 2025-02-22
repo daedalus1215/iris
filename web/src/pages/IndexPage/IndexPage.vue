@@ -1,9 +1,9 @@
 <template>
   <q-page class="flex flex-center">
-    <div class="column items-center q-pa-md" style="width: 100%; max-width: 350px">
+    <div class="column items-center q-pa-sm" style="width: 100%; max-width: 350px">
       <!-- Scan and Device Selection with Power Buttons (Top, Centered) -->
-      <q-card flat bordered class="full-width q-mb-md q-elevation-2 q-card-glossy">
-        <q-card-section class="bg-gradient text-center q-pa-md">
+      <q-card flat bordered class="full-width q-mb-sm q-elevation-2 q-card-glossy">
+        <q-card-section class="bg-gradient text-center q-pa-sm">
           <div class="row q-col-gutter-sm justify-center">
             <q-btn
               color="negative-gradient"
@@ -12,7 +12,7 @@
               :disabled="!isConnected"
               class="q-btn-glow"
               unelevated
-              size="md"
+              size="sm"
               rounded
             />
             <q-btn
@@ -21,7 +21,7 @@
               @click="scanForDevices"
               class="q-btn-glow"
               unelevated
-              size="md"
+              size="sm"
               rounded
             />
             <q-btn
@@ -31,7 +31,7 @@
               :disabled="!isConnected"
               class="q-btn-glow"
               unelevated
-              size="md"
+              size="sm"
               rounded
             />
           </div>
@@ -55,7 +55,7 @@
 
       <!-- Main Remote Control Layout (Centered, Compact Remote Style) -->
       <q-card flat bordered class="full-width q-elevation-2 q-card-glossy">
-        <q-card-section class="bg-gradient q-pa-md">
+        <q-card-section class="bg-gradient q-pa-sm">
           <div class="column items-center q-gutter-y-sm">
             <!-- Directional Pad (Compact D-pad) -->
             <div class="row justify-center">
@@ -66,7 +66,7 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
+                size="sm"
                 rounded
               />
             </div>
@@ -78,7 +78,7 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
+                size="sm"
                 rounded
               />
               <q-btn
@@ -88,17 +88,7 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
-                rounded
-              />
-              <q-btn
-                color="secondary-gradient"
-                label="M"
-                @click="sendCommand('menu')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="md"
+                size="sm"
                 rounded
               />
               <q-btn
@@ -108,11 +98,9 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
+                size="sm"
                 rounded
               />
-            </div>
-            <div class="row justify-center q-mt-sm">
               <q-btn
                 color="secondary-gradient"
                 icon="arrow_downward"
@@ -120,13 +108,25 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
+                size="sm"
+                rounded
+              />
+            </div>
+            <div class="row justify-center q-mt-sm">
+              <q-btn
+                color="secondary-gradient"
+                label="M"
+                @click="sendCommand('menu')"
+                :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
                 rounded
               />
             </div>
 
             <!-- Media Controls (Compact, Inline) -->
-            <div class="row justify-center q-mt-md">
+            <div class="row justify-center q-mt-sm">
               <q-btn
                 color="primary-gradient"
                 icon="skip_previous"
@@ -134,7 +134,7 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
+                size="sm"
                 rounded
               />
               <q-btn
@@ -144,7 +144,7 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
+                size="sm"
                 rounded
               />
               <q-btn
@@ -154,7 +154,7 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
+                size="sm"
                 rounded
               />
               <q-btn
@@ -164,7 +164,7 @@
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
-                size="md"
+                size="sm"
                 rounded
               />
             </div>
@@ -268,8 +268,10 @@ const sendCommand = async (command: string) => {
   text-transform: uppercase;
   font-weight: bold;
   transition: all 0.3s ease;
-  min-width: 120px; /* Ensure buttons are wide enough for thumb taps */
-  padding: 16px 24px; /* Larger padding for touch targets */
+  height: 75px;
+  min-width: 80px;
+  padding: 10px 10px;
+  margin: 10px;
 }
 
 .q-btn-glow {
@@ -340,30 +342,23 @@ const sendCommand = async (command: string) => {
   font-size: 1.1rem; /* Slightly larger text for readability */
 }
 
-/* Responsive adjustments for cellphone screens */
 @media (max-width: 480px) {
-  .q-card {
-    margin: 10px 0;
-    width: 100%;
-  }
-
   .q-btn {
-    min-width: 100px; /* Adjust button width for smaller screens */
-    padding: 14px 20px; /* Slightly smaller padding on very small screens */
+    min-width: 70px;
+    padding: 8px 16px;
   }
 
-  .row {
-    flex-direction: column; /* Stack rows vertically on very small screens */
-    align-items: center; /* Center-aligned for balance, but still thumb-friendly */
+  .row.q-col-gutter-md.justify-center {
+    flex-wrap: wrap;
   }
 
   .col-6 {
-    width: 100%; /* Full width for buttons on small screens */
-    margin-bottom: 10px; /* Add space between stacked buttons */
+    width: 45%;
+    margin-bottom: 8px;
   }
 
-  .q-card-section {
-    padding: 16px; /* Adjust padding for smaller screens */
+  .col-12 {
+    width: 90%;
   }
 }
 </style>
