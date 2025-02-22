@@ -152,8 +152,8 @@ export class AppleTvService {
     return this.executeCommand(mac, 'home');
   }
 
-  async holdHome(mac: string) {
-    return this.executeCommand(mac, 'hold_home');
+  async homeHold(mac: string) {
+    return this.executeCommand(mac, 'home_hold');
   }
 
   async play(mac: string) {
