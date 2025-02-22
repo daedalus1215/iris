@@ -1,4 +1,4 @@
-import { HttpException, Injectable, NotAcceptableException } from '@nestjs/common';
+import { Injectable, NotAcceptableException } from '@nestjs/common';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { spawn } from 'child_process';
@@ -32,11 +32,14 @@ export class AppleTvService {
       pairingState.set(pairingId, { mac, protocol });
 
       // Start pairing as a detached process
-
-      const pairProcess = spawn('atvremote', ['--id', mac, '--protocol', protocol, 'pair'], {
-        detached: true,
-        stdio: 'ignore', // Ignore output since we're not handling it here
-      });
+      const pairProcess = spawn(
+        'atvremote',
+        ['--id', mac, '--protocol', protocol, 'pair'],
+        {
+          detached: true,
+          stdio: 'ignore', // Ignore output since we're not handling it here
+        }
+      );
 
       pairProcess.unref(); // Allow the process to continue in the background
 
@@ -54,25 +57,30 @@ export class AppleTvService {
     const state = pairingState.get(pairingId);
     console.log('state', state);
     if (!state) {
-      throw new NotAcceptableException('Invalid pairing ID or pairing has expired.');
+      throw new NotAcceptableException(
+        'Invalid pairing ID or pairing has expired.',
+      );
     }
-  
+
     const { mac, protocol } = state;
-  
     try {
       const pairResult = await execAsync(
         `atvremote --id ${mac} --protocol ${protocol} pair --pin ${code}`,
       );
-  
+
       if (pairResult.stdout.includes('Pairing successful')) {
         const newCredentials = await this.getCredentials(mac, protocol);
         pairingState.delete(pairingId); 
         return { message: 'Pairing successful', credentials: newCredentials };
       }
       throw new NotAcceptableException('Pairing failed. Incorrect code?');
-    } catch (error) {
-      console.log(`Failed to complete pairing: ${error.message}`)
-      throw new NotAcceptableException(`Failed to complete pairing: ${error.message}`);
+    } catch (error: unknown) {
+      console.log(
+        `Failed to complete pairing: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      throw new NotAcceptableException(
+        `Failed to complete pairing: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
