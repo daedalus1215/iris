@@ -52,16 +52,6 @@ export class AppleTvController {
     return this.appleTvService.menu(mac);
   }
 
-  @Post('click')
-  async click(@Body('mac') mac: string) {
-    return this.appleTvService.click(mac);
-  }
-
-  @Post('home-hold')
-  async homeHold(@Body('mac') mac: string) {
-    return this.appleTvService.homeHold(mac);
-  }
-
   @Post('home')
   async home(@Body('mac') mac: string) {
     return this.appleTvService.home(mac);
@@ -87,16 +77,6 @@ export class AppleTvController {
     return this.appleTvService.previous(mac);
   }
 
-  @Post('volume-up')
-  async volumeUp(@Body('mac') mac: string) {
-    return this.appleTvService.volumeUp(mac);
-  }
-
-  @Post('volume-down')
-  async volumeDown(@Body('mac') mac: string) {
-    return this.appleTvService.volumeDown(mac);
-  }
-
   @Post('power-off')
   async powerOff(@Body('mac') mac: string) {
     return this.appleTvService.powerOff(mac);
@@ -105,11 +85,6 @@ export class AppleTvController {
   @Post('power-on')
   async powerOn(@Body('mac') mac: string) {
     return this.appleTvService.powerOn(mac);
-  }
-
-  @Post('sleep')
-  async sleep(@Body('mac') mac: string) {
-    return this.appleTvService.sleep(mac);
   }
 
   @Get('scan')
