@@ -32,7 +32,7 @@
               <q-btn
                 color="positive"
                 label="Turn On"
-                @click="sendCommand('on')"
+                @click="sendCommand('power-on')"
                 :disabled="!isConnected"
                 class="full-width"
               />
@@ -41,7 +41,18 @@
               <q-btn
                 color="negative"
                 label="Turn Off"
-                @click="sendCommand('off')"
+                @click="sendCommand('power-off')"
+                :disabled="!isConnected"
+                class="full-width"
+              />
+            </div>
+          </div>
+          <div class="row q-col-gutter-sm q-mt-sm">
+            <div class="col-12">
+              <q-btn
+                color="grey"
+                label="Sleep"
+                @click="sendCommand('sleep')"
                 :disabled="!isConnected"
                 class="full-width"
               />
@@ -75,10 +86,11 @@
               />
               <q-btn
                 color="secondary"
-                label="Click"
-                @click="sendCommand('click')"
+                label="Home"
+                @click="sendCommand('home')"
                 :disabled="!isConnected"
               />
+
               <q-btn
                 color="secondary"
                 label="Right"
@@ -129,6 +141,26 @@
             <div class="col-6">
               <q-btn
                 color="primary"
+                label="Previous"
+                @click="sendCommand('previous')"
+                :disabled="!isConnected"
+                class="full-width"
+              />
+            </div>
+            <div class="col-6">
+              <q-btn
+                color="primary"
+                label="Next"
+                @click="sendCommand('next')"
+                :disabled="!isConnected"
+                class="full-width"
+              />
+            </div>
+          </div>
+          <div class="row q-col-gutter-sm q-mt-sm">
+            <div class="col-6">
+              <q-btn
+                color="primary"
                 label="Volume Up"
                 @click="sendCommand('volume-up')"
                 :disabled="!isConnected"
@@ -140,6 +172,17 @@
                 color="primary"
                 label="Volume Down"
                 @click="sendCommand('volume-down')"
+                :disabled="!isConnected"
+                class="full-width"
+              />
+            </div>
+          </div>
+          <div class="row q-col-gutter-sm q-mt-sm">
+            <div class="col-6">
+              <q-btn
+                color="primary"
+                label="Hold Home"
+                @click="sendCommand('home-home')"
                 :disabled="!isConnected"
                 class="full-width"
               />
