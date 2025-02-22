@@ -57,9 +57,9 @@ export class AppleTvController {
     return this.appleTvService.click(mac);
   }
 
-  @Post('home-home')
-  async holdHome(@Body('mac') mac: string) {
-    return this.appleTvService.holdHome(mac);
+  @Post('home-hold')
+  async homeHold(@Body('mac') mac: string) {
+    return this.appleTvService.homeHold(mac);
   }
 
   @Post('home')
