@@ -181,11 +181,11 @@ export class AppleTvService {
   }
 
   async powerOff(mac: string) {
-    return this.executeCommand(mac, 'poweroff');
+    return this.executeCommand(mac, 'turn_off');
   }
 
   async powerOn(mac: string) {
-    return this.executeCommand(mac, 'poweron');
+    return this.executeCommand(mac, 'turn_on');
   }
 
   async sleep(mac: string) {
