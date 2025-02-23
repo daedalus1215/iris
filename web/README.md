@@ -1,40 +1,20 @@
-# Quasar App (iris)
+# Iris
 
-A Quasar Project
+## Intro
 
-## Install the dependencies
-```bash
-yarn
-# or
-npm install
-```
+- This is an AppleTV Remote App.
+- This is the web version of the front end for iris. It ties in with iris-backend.
 
-### Start the app in development mode (hot-code reloading, error reporting, etc.)
-```bash
-quasar dev
-```
+## Requirement
 
+- copy `.env.sample` file and create a `.env` out of it.
 
-### Lint the files
-```bash
-yarn lint
-# or
-npm run lint
-```
+## How to run
 
+- node version 20+
+- `npm install`
+- `npm run dev`
 
-### Format the files
-```bash
-yarn format
-# or
-npm run format
-```
+## How it looks
 
-
-### Build the app for production
-```bash
-quasar build
-```
-
-### Customize the configuration
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+![alt text](https://github.com/daedalus1215/iris-frontend/blob/main/src/assets/first_version.png?raw=true)
