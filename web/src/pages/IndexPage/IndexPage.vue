@@ -1,190 +1,171 @@
 <template>
   <q-page class="flex flex-center">
-    <div class="column items-center q-pa-md" style="width: 100%; max-width: 400px">
-      <!-- Scan and Device Selection -->
-      <q-card flat bordered class="full-width q-mb-md">
-        <q-card-section>
-          <q-btn
-            color="primary"
-            label="Scan for Devices"
-            @click="scanForDevices"
-            class="full-width"
-          />
+    <div class="column items-center q-pa-sm" style="width: 100%; max-width: 350px">
+      <!-- Scan and Device Selection with Power Buttons (Top, Centered) -->
+      <q-card flat bordered class="full-width q-mb-sm q-elevation-2 q-card-glossy">
+        <q-card-section class="bg-gradient text-center q-pa-sm">
+          <div class="row q-col-gutter-sm justify-center">
+            <q-btn
+              color="negative-gradient"
+              icon="power_settings_new"
+              @click="sendCommand('power-off')"
+              :disabled="!isConnected"
+              class="q-btn-glow"
+              unelevated
+              size="sm"
+              rounded
+            />
+            <q-btn
+              color="primary-gradient"
+              label="Scan"
+              @click="scanForDevices"
+              class="q-btn-glow"
+              unelevated
+              size="sm"
+              rounded
+            />
+            <q-btn
+              color="positive-gradient"
+              icon="power"
+              @click="sendCommand('power-on')"
+              :disabled="!isConnected"
+              class="q-btn-glow"
+              unelevated
+              size="sm"
+              rounded
+            />
+          </div>
           <q-select
             v-if="devices.length > 0"
             filled
-            label="Select Apple TV"
+            label="Select Device"
             :options="devices"
             v-model="selectedDevice"
             emit-value
             map-options
             @update:model-value="onDeviceSelect"
             class="q-mt-sm"
+            color="primary-gradient"
+            borderless
+            standout
+            style="width: 100%"
           />
         </q-card-section>
       </q-card>
 
-      <!-- Power Controls -->
-      <q-card flat bordered class="full-width q-mb-md">
-        <q-card-section>
-          <div class="row q-col-gutter-sm">
-            <div class="col-6">
-              <q-btn
-                color="positive"
-                label="Turn On"
-                @click="sendCommand('power-on')"
-                :disabled="!isConnected"
-                class="full-width"
-              />
-            </div>
-            <div class="col-6">
-              <q-btn
-                color="negative"
-                label="Turn Off"
-                @click="sendCommand('power-off')"
-                :disabled="!isConnected"
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="row q-col-gutter-sm q-mt-sm">
-            <div class="col-12">
-              <q-btn
-                color="grey"
-                label="Sleep"
-                @click="sendCommand('sleep')"
-                :disabled="!isConnected"
-                class="full-width"
-              />
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
-
-      <!-- Navigation Controls -->
-      <q-card flat bordered class="full-width q-mb-md">
-        <q-card-section>
+      <!-- Main Remote Control Layout (Centered, Compact Remote Style) -->
+      <q-card flat bordered class="full-width q-elevation-2 q-card-glossy">
+        <q-card-section class="bg-gradient q-pa-sm">
           <div class="column items-center q-gutter-y-sm">
-            <q-btn
-              color="secondary"
-              label="Up"
-              @click="sendCommand('up')"
-              :disabled="!isConnected"
-            />
-            <div class="row q-gutter-x-sm justify-center">
+            <!-- Directional Pad (Compact D-pad) -->
+            <div class="row justify-center">
               <q-btn
-                color="secondary"
-                label="Left"
+                color="secondary-gradient"
+                icon="arrow_upward"
+                @click="sendCommand('up')"
+                :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
+              />
+            </div>
+            <div class="row justify-center q-mt-sm">
+              <q-btn
+                color="secondary-gradient"
+                icon="arrow_back"
                 @click="sendCommand('left')"
                 :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
               />
               <q-btn
-                color="secondary"
-                label="Select"
+                color="secondary-gradient"
+                label="OK"
                 @click="sendCommand('select')"
                 :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
               />
               <q-btn
-                color="secondary"
-                label="Home"
-                @click="sendCommand('home')"
-                :disabled="!isConnected"
-              />
-
-              <q-btn
-                color="secondary"
-                label="Right"
+                color="secondary-gradient"
+                icon="arrow_forward"
                 @click="sendCommand('right')"
                 :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
+              />
+              <q-btn
+                color="secondary-gradient"
+                icon="arrow_downward"
+                @click="sendCommand('down')"
+                :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
               />
             </div>
-            <q-btn
-              color="secondary"
-              label="Down"
-              @click="sendCommand('down')"
-              :disabled="!isConnected"
-            />
-            <q-btn
-              color="secondary"
-              label="Menu"
-              @click="sendCommand('menu')"
-              :disabled="!isConnected"
-            />
-          </div>
-        </q-card-section>
-      </q-card>
+            <div class="row justify-center q-mt-sm">
+              <q-btn
+                color="secondary-gradient"
+                label="M"
+                @click="sendCommand('menu')"
+                :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
+              />
+            </div>
 
-      <!-- Media Controls -->
-      <q-card flat bordered class="full-width">
-        <q-card-section>
-          <div class="row q-col-gutter-sm">
-            <div class="col-6">
+            <!-- Media Controls (Compact, Inline) -->
+            <div class="row justify-center q-mt-sm">
               <q-btn
-                color="primary"
-                label="Play"
-                @click="sendCommand('play')"
-                :disabled="!isConnected"
-                class="full-width"
-              />
-            </div>
-            <div class="col-6">
-              <q-btn
-                color="primary"
-                label="Pause"
-                @click="sendCommand('pause')"
-                :disabled="!isConnected"
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="row q-col-gutter-sm q-mt-sm">
-            <div class="col-6">
-              <q-btn
-                color="primary"
-                label="Previous"
+                color="primary-gradient"
+                icon="skip_previous"
                 @click="sendCommand('previous')"
                 :disabled="!isConnected"
-                class="full-width"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
               />
-            </div>
-            <div class="col-6">
               <q-btn
-                color="primary"
-                label="Next"
+                color="primary-gradient"
+                icon="play_arrow"
+                @click="sendCommand('play')"
+                :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
+              />
+              <q-btn
+                color="primary-gradient"
+                icon="pause"
+                @click="sendCommand('pause')"
+                :disabled="!isConnected"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
+              />
+              <q-btn
+                color="primary-gradient"
+                icon="skip_next"
                 @click="sendCommand('next')"
                 :disabled="!isConnected"
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="row q-col-gutter-sm q-mt-sm">
-            <div class="col-6">
-              <q-btn
-                color="primary"
-                label="Volume Up"
-                @click="sendCommand('volume-up')"
-                :disabled="!isConnected"
-                class="full-width"
-              />
-            </div>
-            <div class="col-6">
-              <q-btn
-                color="primary"
-                label="Volume Down"
-                @click="sendCommand('volume-down')"
-                :disabled="!isConnected"
-                class="full-width"
-              />
-            </div>
-          </div>
-          <div class="row q-col-gutter-sm q-mt-sm">
-            <div class="col-6">
-              <q-btn
-                color="primary"
-                label="Hold Home"
-                @click="sendCommand('home-home')"
-                :disabled="!isConnected"
-                class="full-width"
+                class="q-btn-glow"
+                unelevated
+                size="sm"
+                rounded
               />
             </div>
           </div>
@@ -256,3 +237,128 @@ const sendCommand = async (command: string) => {
   }
 }
 </script>
+
+<style scoped>
+/* Custom Styling for a "Cooler and Sexier" Look, Traditional Remote Style */
+.q-card {
+  border-radius: 20px; /* Slightly larger for better touch targets */
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.q-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+.q-card-glossy {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.bg-gradient {
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border-radius: 20px;
+  padding: 20px; /* Increased padding for touch comfort */
+}
+
+.q-btn {
+  border-radius: 15px; /* Larger radius for touch */
+  text-transform: uppercase;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  height: 75px;
+  min-width: 80px;
+  padding: 10px 10px;
+  margin: 10px;
+}
+
+.q-btn-glow {
+  box-shadow: 0 0 15px rgba(100, 100, 255, 0.5);
+}
+
+.q-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(100, 100, 255, 0.7);
+}
+
+.q-btn.unelevated {
+  background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+}
+
+.primary-gradient {
+  background: linear-gradient(45deg, #ff6b6b, #ff8e53);
+  color: white;
+}
+
+.secondary-gradient {
+  background: linear-gradient(45deg, #5d9cec, #4ecdc4);
+  color: white;
+}
+
+.positive-gradient {
+  background: linear-gradient(45deg, #00ff87, #00d2d2);
+  color: white;
+}
+
+.negative-gradient {
+  background: linear-gradient(45deg, #ff4d4d, #ff6b6b);
+  color: white;
+}
+
+.grey-gradient {
+  background: linear-gradient(45deg, #808080, #606060);
+  color: white;
+}
+
+.q-select {
+  border-radius: 15px;
+  font-weight: bold;
+  width: 100%; /* Ensure full width for touch */
+}
+
+.q-select .q-field__control {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: white;
+  border-radius: 15px;
+  padding: 12px;
+}
+
+.q-select .q-field__control:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.q-page {
+  background: linear-gradient(135deg, #0a0a1a, #16213e);
+}
+
+/* Ensure text is readable and stylish */
+.q-card-section,
+.q-btn-label {
+  color: white;
+  font-family: 'Roboto', sans-serif;
+  letter-spacing: 0.5px;
+  font-size: 1.1rem; /* Slightly larger text for readability */
+}
+
+@media (max-width: 480px) {
+  .q-btn {
+    min-width: 70px;
+    padding: 8px 16px;
+  }
+
+  .row.q-col-gutter-md.justify-center {
+    flex-wrap: wrap;
+  }
+
+  .col-6 {
+    width: 45%;
+    margin-bottom: 8px;
+  }
+
+  .col-12 {
+    width: 90%;
+  }
+}
+</style>
