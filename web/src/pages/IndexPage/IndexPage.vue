@@ -149,8 +149,8 @@
               />
               <q-btn
                 color="primary-gradient"
-                icon="pause"
-                @click="sendCommand('pause')"
+                icon="skip_next"
+                @click="sendCommand('next')"
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
@@ -159,8 +159,8 @@
               />
               <q-btn
                 color="primary-gradient"
-                icon="skip_next"
-                @click="sendCommand('next')"
+                icon="pause"
+                @click="sendCommand('pause')"
                 :disabled="!isConnected"
                 class="q-btn-glow"
                 unelevated
