@@ -176,14 +176,41 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import api from '../../api'
 
 // State for storing device list, selected device, connection status, and protocol
-const devices = ref<{ name: string; mac: string }[]>([])
+const devices = ref<{ label: string; value: string }[]>([])
 const selectedDevice = ref<string | null>(null)
 const isConnected = ref(false)
 const protocol = ref<string | null>(null)
+
+// Load saved devices from localStorage
+const loadSavedDevices = () => {
+  const savedDevices = localStorage.getItem('appletvDevices')
+  if (savedDevices) {
+    devices.value = JSON.parse(savedDevices)
+  }
+
+  const lastSelectedDevice = localStorage.getItem('selectedAppleTvDevice')
+  if (lastSelectedDevice) {
+    selectedDevice.value = lastSelectedDevice
+  }
+}
+
+// Save devices to localStorage
+const saveDevices = () => {
+  localStorage.setItem('appletvDevices', JSON.stringify(devices.value))
+}
+
+// Save selected device
+const saveSelectedDevice = () => {
+  if (selectedDevice.value) {
+    localStorage.setItem('selectedAppleTvDevice', selectedDevice.value)
+  } else {
+    localStorage.removeItem('selectedAppleTvDevice')
+  }
+}
 
 // Function to scan for devices
 const scanForDevices = async () => {
@@ -193,6 +220,8 @@ const scanForDevices = async () => {
       label: device.name, // Display name of the device
       value: device.mac, // Unique identifier for the device
     }))
+    // Save to localStorage after successful scan
+    saveDevices()
   } catch (error) {
     console.error('Failed to scan devices:', error)
   }
@@ -211,6 +240,9 @@ const onDeviceSelect = async () => {
       // Assuming the response provides protocol or other constraints
       protocol.value = connectionResponse.data.protocol // Adjust based on your backend
       isConnected.value = true // Mark as connected
+
+      // Save selected device to localStorage
+      saveSelectedDevice()
 
       console.log('Connected to Apple TV', selectedDevice.value, 'with protocol', protocol.value)
     } catch (error) {
@@ -236,6 +268,15 @@ const sendCommand = async (command: string) => {
     console.error('Failed to send command:', error)
   }
 }
+
+// Load saved devices when component mounts
+onMounted(() => {
+  loadSavedDevices()
+  // If we have a saved device, try to connect to it
+  if (selectedDevice.value) {
+    onDeviceSelect()
+  }
+})
 </script>
 
 <style scoped>
