@@ -141,8 +141,14 @@ export class AppleTvService {
   }
 
   async menu(mac: string) {
-    return this.executeCommand(mac, 'menu');
-  }
+    try {
+      return this.executeCommand(mac, 'menu');
+    } catch (error) {
+      throw new NotAcceptableException(
+        `Failed to execute command: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+}
 
   async home(mac: string) {
     return this.executeCommand(mac, 'home');
