@@ -1,6 +1,6 @@
 # M2: Home-lab deploy (dev + prod)
 
-**Status:** In progress: dev is live and used from the phone; prod is next
+**Status:** In progress: dev and prod are live (`07fd521`); prod needs pairing and phone access
 **Depends on:** M1 backend
 **Outcome:** Iris runs on the home lab's Docker hosts as a dev and a prod environment, at `iris.dev.lan` and `iris.lan`. It's deployed the same way as the lab's other apps.
 
@@ -59,7 +59,8 @@ The home-lab repo (`~/Projects/home-lab`, private) already runs its apps as Comp
 - [ ] Deploy the DNS names (`deploy-shared.sh dns`). This Mac has no `shared-docker` context and doesn't know the registry host's SSH key.
 - [x] Dev reachable from the phone without DNS: Iris holds dev's bare-IP slot in `dev.env`
 - [ ] Pair dev with both Apple TVs. Living Room is done (both protocols, from the app); Bedroom isn't yet.
-- [ ] Merge the iris PRs with merge commits, then promote to prod2 and pair prod
+- [x] Merged into `main` (PR #2), rebuilt dev from `main` (`07fd521`), promoted to prod2. Both run the same image digest.
+- [ ] Pair prod with both Apple TVs (one Companion PIN each, from the app once the phone can reach `iris.lan`)
 - [ ] Router: forward `/lan/` to the lab's CoreDNS so phones resolve `iris.lan`
 - [ ] DHCP reservations for both Apple TVs (MACs in the home-lab INVENTORY)
 - [ ] Point the Android app at `http://iris.lan`
