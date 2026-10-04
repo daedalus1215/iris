@@ -141,7 +141,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 ## Acceptance criteria
 
 - [x] From the phone on home Wi-Fi, use every button in the UI. It feels very snappy.
-- [ ] Pair through the web UI. Not used yet, because this PC was paired by script; it gets used when dev and prod pair in M2.
+- [ ] Pair through the web UI. The backend's pairing API was used for real on 2026-10-04 to pair Living Room (both protocols, PINs on the TV). The web dialog on top of it is still unused; it gets used when dev and prod pair in M2.
 - [x] Once connected, the backend sends a command to the Apple TV in under 150 ms at p95. Measured: p95 19.7 ms in the spike, about 6 ms through the API.
 - [x] Holding an arrow moves continuously, and releasing stops within about 0.5 s (no backlog).
 - [x] A bad device id, command or protocol gets a 4xx. The backend runs no shell commands at all.
