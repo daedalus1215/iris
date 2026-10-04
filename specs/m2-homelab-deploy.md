@@ -57,7 +57,8 @@ The home-lab repo (`~/Projects/home-lab`, private) already runs its apps as Comp
 - [x] Images built and pushed at `ed7b9bd`
 - [ ] Deploy to dev. Needs the SOPS age key, which this Mac doesn't have: `deploy.sh` decrypts the environment's secrets on every deploy.
 - [ ] Deploy the DNS names (`deploy-shared.sh dns`). This Mac has no `shared-docker` context and doesn't know the registry host's SSH key.
-- [ ] Pair dev with both Apple TVs through the web remote. This is the first real use of the pairing dialog.
+- [x] Dev reachable from the phone without DNS: Iris holds dev's bare-IP slot in `dev.env`
+- [ ] Pair dev with both Apple TVs from the Android app (or the web remote)
 - [ ] Merge the iris PRs with merge commits, then promote to prod2 and pair prod
 - [ ] Router: forward `/lan/` to the lab's CoreDNS so phones resolve `iris.lan`
 - [ ] DHCP reservations for both Apple TVs (MACs in the home-lab INVENTORY)

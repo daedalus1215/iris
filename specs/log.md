@@ -12,9 +12,12 @@ Newest first. Add one entry per working session.
   - Companion is enough (one PIN per TV); AirPlay is optional.
   - 6 new core tests, 28 in total, run locally now that a JDK is installed.
 
+- Gave Iris dev's bare-IP slot in the home lab (home-lab commit, `IRIS_HOSTS` in `dev.env`), so the phone reaches dev at `http://<dev-host-ip>` without `.lan` DNS. Prod's bare IP belongs to another app, so prod still waits for the router change.
+- The laptop backend stopped with the previous session. It isn't a service; restart it with `make run` when it's needed.
+
 **Next**
-- The phone has to reach dev before pairing it from the app: deploy the DNS names (fingerprint check), and make the router change for `.lan`.
-- Then pair dev from the app, and later prod.
+- You: in Iris Dev, set the server to the dev host's bare IP, then pair Bedroom and Living Room (Companion, one PIN each).
+- Deploy the DNS names (fingerprint check) and make the router change for `.lan`; then prod.
 
 ## 2026-10-04 (night)
 
