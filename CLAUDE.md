@@ -12,5 +12,6 @@ Specs live in `specs/`. At the start of a session, read `specs/README.md` and th
 
 - Work on a feature branch and merge into `main` through a PR.
 - Each folder keeps its own tooling; run its commands from inside that folder.
-- The Apple TV is "Bedroom" at `172.16.0.242`. Pairing needs the user at the TV to read the PIN.
+- Two Apple TVs: "Bedroom" and "Living Room". Pairing needs the user at the TV to read the PIN.
+- Real addresses are in `LOCAL.md` (git-ignored) and the home-lab repo's `INVENTORY.md`. Never commit them: this repo, its CI logs and its APKs are public. Specs use placeholders like `<bedroom-ip>`.
 - Until the backend's uv project exists, run pyatv with `uvx --from pyatv atvremote …`.
