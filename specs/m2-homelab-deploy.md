@@ -1,96 +1,77 @@
 # M2: Home-lab deploy (dev + prod)
 
-**Status:** Not started
+**Status:** In progress: images built and pushed; the deploy is waiting on the SOPS age key
 **Depends on:** M1 backend
-**Outcome:** The same container image runs on this PC and on the home-lab Docker host, with dev and prod side by side. Moving between machines changes only an env file.
+**Outcome:** Iris runs on the home lab's Docker hosts as a dev and a prod environment, at `iris.dev.lan` and `iris.lan`. It's deployed the same way as the lab's other apps.
 
-## Design
+## How it fits the home lab
 
-### Image
+The home-lab repo (`~/Projects/home-lab`, private) already runs its apps as Compose stacks on two Docker VMs. Iris follows that repo's runbooks rather than bringing its own setup (D16). This replaces this spec's first design: one image, host networking, and a `deploy/` folder in this repo.
 
-One image, `iris`, built in two stages:
+| | dev | prod |
+|---|---|---|
+| Host | `docker-dev` | `docker-prod2` |
+| Address | `iris.dev.lan` | `iris.lan` |
+| Env file (home-lab) | `compose/env/dev.env` | `compose/env/prod2.env` |
+| Name on the Apple TVs | Iris (dev) | Iris (prod) |
 
-1. A Node 20+ stage builds `web/` (`quasar build`, output in `dist/spa`).
-2. A Python 3.13-slim stage installs the backend with uv, copies the frontend build into `IRIS_STATIC_DIR`, and runs uvicorn as a non-root user.
+- **Images:**
+  - The home lab's `compose/build-push.sh` builds every top-level folder that has a Dockerfile, running on `docker-dev`, and pushes `registry.lan:5000/iris-backend:<sha>` and `iris-web:<sha>`.
+  - Dev builds; prod promotes the same tag without rebuilding.
+- **Stack:** `compose/apps/iris.yml` runs `backend` (`/api`, port 8080) and `web` (port 80) behind Traefik on the same host name. Ordinary bridge networking works (D8 superseded).
+- **Config:** `IRIS_TAG`, `IRIS_HOSTS`, `IRIS_ENV` and `IRIS_SCAN_HOSTS` in the env files. There are no secrets.
+- **State:** pairing credentials in each host's `iris_data` volume.
+  - prod2 is backed up nightly along with its VM.
+  - dev isn't backed up; if its volume is lost, pair it again.
+- **Names:** `compose/shared/dns/lan.hosts`, deployed with `./compose/deploy-shared.sh dns`.
+- **Deploy:**
+  1. `./compose/ship.sh iris dev --repo ~/Projects/iris-root/iris`.
+  2. Merge the PR with a merge commit, so the image tag stays a commit on `main`.
+  3. `./compose/ship.sh iris prod2`.
+- **Same TVs:** dev and prod control the same two Apple TVs. There's no dev TV.
 
-Build for both `linux/arm64` and `linux/amd64` (`docker buildx`). This PC is ARM, while most home-lab hosts are x86. pyatv's `miniaudio` dependency may need compiling on one of the two, so the build stage needs a C compiler.
+### Reaching it from the phone
 
-The Dockerfile sits at the repo root, so the build context includes both `backend/` and `web/` (D7).
-
-### Compose
-
-A single parameterized file, `deploy/compose.yml`:
-
-- `network_mode: host` (D8). Scanning the network works, and the Apple TV is reachable as it would be from a program running directly on the host. Because of this, the port comes from `IRIS_PORT` instead of a port mapping.
-- Volume `data:/data` with `IRIS_DATA_DIR=/data` for pairing credentials. Each environment gets its own volume.
-- `restart: unless-stopped`, a healthcheck on `/api/health`, and json-file logs with rotation.
-- The image tag comes from `IRIS_IMAGE_TAG`.
-
-### Environments
-
-Each environment is its own Compose project:
-
-| Env | Where | Compose project | Port | Image tag | Data volume |
-|---|---|---|---|---|---|
-| local | this PC | `iris-local` | 8080 | built locally | `iris-local_data` |
-| dev | home lab | `iris-dev` | 8081 | `dev` (latest `main`) | `iris-dev_data` |
-| prod | home lab | `iris-prod` | 8080 | a pinned version, e.g. `1.0.0` | `iris-prod_data` |
-
-- Each environment has an env file in `deploy/env/` (`local.env`, `dev.env`, `prod.env`) that sets `IRIS_ENV`, `IRIS_PORT`, `IRIS_IMAGE_TAG` and `IRIS_SCAN_HOSTS`.
-- Secrets such as `IRIS_AUTH_TOKEN` go in an untracked file or the host's environment.
-- The underlying command is `docker compose -p iris-prod --env-file deploy/env/prod.env -f deploy/compose.yml up -d`. A Makefile wraps it: `make up ENV=prod`.
-
-### Release flow
-
-This assumes GitHub Container Registry, which is still an open question.
-
-- **Dev:** a merge to `main` that touches `backend/` or `web/` makes CI build `ghcr.io/daedalus1215/iris:dev`, plus a git-sha tag. Running `make up ENV=dev` on the home lab pulls it.
-- **Prod:** tagging a release (`v1.0.0`) makes CI build `:1.0.0`. Set `IRIS_IMAGE_TAG` in `prod.env`, then run `make up ENV=prod`.
-- **Rollback:** set the previous tag and run `make up ENV=prod` again.
-
-### Networking requirements
-
-- **Home-lab host to Apple TV.** The simplest setup is the same subnet as the Apple TVs, with no firewall between them. Across VLANs, allow the host to reach the Apple TV on all TCP ports (AirPlay negotiates extra ports beyond 7000) and on UDP 5353 for scanning. Also set `IRIS_SCAN_HOSTS`, because multicast scans won't cross VLANs.
-- **Scanning and the host firewall.** Apple TVs answer a multicast scan by replying directly to the scanning host (from UDP 5353 to the scanner's port). A default-deny firewall such as this PC's ufw drops those replies, so a multicast scan finds nothing. Scanning listed addresses (`IRIS_SCAN_HOSTS`) works through the firewall, because the replies count as answers to requests the host sent. Prefer `IRIS_SCAN_HOSTS`, or allow `udp from <LAN> port 5353` on the host.
-- **Phone to host.** On ports 8080 and 8081 over home Wi-Fi, and through Tailscale when away (the host joins the tailnet). Open these ports in the host's firewall, as this PC's ufw needed.
-- **Optional:** reverse-proxy hostnames such as `iris.<domain>` and `iris-dev.<domain>` with HTTPS. HTTPS also lets the web remote install as a home-screen app (PWA).
+- Phones don't resolve `.lan` names yet. The router hands out its own resolver, which doesn't forward `.lan`. The home-lab DNS runbook's fix is one LuCI change on the router that forwards `/lan/` to the lab's CoreDNS.
+- Until then, test from a laptop browser, where `.lan` resolves.
+- In the Android app, set the server address to `http://iris.lan` (or `http://iris.dev.lan` for the dev build) once the router forwards `.lan`.
 
 ## Tasks
 
-### Local (this PC)
+### Iris repo
 
-- [ ] Enable Docker here. You run `sudo systemctl enable --now docker`, then either `sudo usermod -aG docker $USER` and log in again, or set up rootless Docker. Note that the `docker` group is effectively root access.
-- [ ] Multi-stage Dockerfile and `.dockerignore`, running as a non-root user
-- [ ] `deploy/compose.yml`, the env files and the Makefile
-- [ ] Run `make up ENV=local`, pair, and test from the phone. It should behave the same as the native M1 run.
-
-### CI and registry
-
-- [ ] Decide on the registry: GHCR, or building on the host
-- [ ] GitHub Actions workflow that builds and pushes on `main` and on tags, filtered to changes in `backend/`, `web/` and `deploy/`
+- [x] Dockerfiles:
+  - backend: python:3.13-slim with a uv venv, non-root, `/data` volume
+  - web: the Quasar build on nginx
+- [x] Checked that a container on `docker-dev`'s edge network can scan and list both Apple TVs
+- [x] Kept home-network details out of the public repo (D15)
 
 ### Home lab
 
-- [ ] Collect host details: IP, OS, Docker version, subnet
-- [ ] Check that the host can reach the Apple TV: `atvremote -s <apple-tv-ip> scan`, from the host and from a container
-- [ ] DHCP reservation for the Apple TV, or confirm its address is stable
-- [ ] Deploy dev, pair, and test from the phone
-- [ ] Deploy prod, pair, and test from the phone
-- [ ] Put the host on Tailscale, if you want remote access
-- [ ] Runbook in `deploy/README.md`: deploy, update, roll back, re-pair, logs, back up the data volume
+- [x] Wired Iris in (home-lab commit `0084d36`, not pushed yet):
+  - `compose/apps/iris.yml`
+  - dev and prod2 env entries
+  - `lan.hosts` names
+  - INVENTORY section for the Apple TVs and their MACs
+  - README status row
+- [x] Images built and pushed at `ed7b9bd`
+- [ ] Deploy to dev. Needs the SOPS age key, which this Mac doesn't have: `deploy.sh` decrypts the environment's secrets on every deploy.
+- [ ] Deploy the DNS names (`deploy-shared.sh dns`). This Mac has no `shared-docker` context and doesn't know the registry host's SSH key.
+- [ ] Pair dev with both Apple TVs through the web remote. This is the first real use of the pairing dialog.
+- [ ] Merge the iris PRs with merge commits, then promote to prod2 and pair prod
+- [ ] Router: forward `/lan/` to the lab's CoreDNS so phones resolve `iris.lan`
+- [ ] DHCP reservations for both Apple TVs (MACs in the home-lab INVENTORY)
+- [ ] Point the Android app at `http://iris.lan`
 
 ## Acceptance criteria
 
-- [ ] There is one image; local, dev and prod differ only in their env file.
-- [ ] Dev and prod run side by side on the home-lab host without sharing ports, data or pairings.
-- [ ] Prod comes back on its own after a host reboot or an Apple TV restart.
-- [ ] The phone controls Bedroom through prod within M1's latency target.
-- [ ] Updating or rolling back prod takes one command.
+- [ ] `iris.dev.lan` and `iris.lan` serve the web remote, and both list Bedroom and Living Room.
+- [ ] Each environment is paired with both Apple TVs and controls them.
+- [ ] prod2 runs the exact image tag that dev tested (promoted, not rebuilt).
+- [ ] Prod comes back on its own after a host reboot and keeps its pairings.
+- [ ] The phone reaches `iris.lan` from both the browser and the Android app.
+- [ ] Rolling back prod takes one command: set `IRIS_TAG` back and ship again.
 
 ## Open questions
 
-- Home-lab host details, and whether it's on the Apple TV's subnet.
-- Registry: GHCR via Actions, or build on the host?
-- Reverse proxy and local DNS: which ones, if any?
-- Auth token, or LAN plus Tailscale only?
-- Dev updates: automatic (e.g. Watchtower), or a manual `make up ENV=dev`?
+- Auth token: for now it's LAN only, with no token. Revisit if anyone who shouldn't be pressing buttons on the TVs can reach the LAN.
