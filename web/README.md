@@ -3,7 +3,7 @@
 ## Intro
 
 - This is an AppleTV Remote App.
-- This is the web version of the front end for iris. It ties in with iris-backend.
+- This is the web version of the front end for iris. It ties in with `../backend`.
 
 ## Requirement
 
@@ -17,4 +17,4 @@
 
 ## How it looks
 
-![alt text](https://github.com/daedalus1215/iris-frontend/blob/main/src/assets/first_version.png?raw=true)
+![alt text](src/assets/first_version.png)
