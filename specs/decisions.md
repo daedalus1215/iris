@@ -71,3 +71,44 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Date:** 2026-10-04
 - **Status:** Proposed
 - **Why:** FastAPI validates requests and generates OpenAPI docs, which help when building the Android client. aiohttp would avoid extra dependencies, since pyatv already depends on it.
+
+### D10: Android APKs are built by GitHub Actions, not on this Mac
+
+- **Date:** 2026-10-04
+- **Status:** Accepted
+- **Why:** This Mac (Apple M1 Pro running Arch, with a 16 KB-page kernel) can't run `aapt2`, the Android resource compiler that every app build needs:
+  - Google publishes `aapt2` for Linux only as an x86-64 binary.
+  - The community ARM builds are aligned for 4 KB pages, so a 16 KB-page kernel refuses to load them.
+- **Consequences:**
+  - The app's logic lives in `android/core`, a plain Kotlin build that compiles and tests here without the Android SDK (`./gradlew -p core test`).
+  - The `app` module only compiles in CI.
+  - Every push that touches `android/` publishes both APKs to the rolling `android-dev` pre-release, which the phone installs from.
+- **Revisit:** if the home-lab host (x86) becomes a faster place to build.
+
+### D11: AGP 9 with compileSdk 37
+
+- **Date:** 2026-10-04
+- **Status:** Accepted
+- **Why:** The current AndroidX core (1.19) and Compose (1.12) libraries require AGP 9.1+ and compileSdk 37. Staying on AGP 8 would mean pinning year-old libraries.
+- **Consequences:** AGP 9 compiles Kotlin itself, so there's no `kotlin-android` plugin in the app module. That plugin is declared only to pin the Kotlin version.
+
+### D12: Application id `io.github.daedalus1215.iris`
+
+- **Date:** 2026-10-04
+- **Status:** Proposed
+- **Why:** It replaces the template's `com.example.iris` with a reverse-domain id based on the GitHub account. The dev flavor adds `.dev`, so both apps can be installed side by side.
+- **Note:** changing it after installing means uninstalling and reinstalling, so decide before relying on it.
+
+### D13: The app allows plain HTTP
+
+- **Date:** 2026-10-04
+- **Status:** Proposed
+- **Why:** The server runs on the home network over HTTP, at an address set in the app.
+- **Revisit:** once M2 puts HTTPS in front of the server through a reverse proxy.
+
+### D14: The debug signing key is committed
+
+- **Date:** 2026-10-04
+- **Status:** Proposed
+- **Why:** Each CI build has to install over the previous one on the phone, which requires the same signing key every time. Debug keys aren't secrets; Android's own is the same well-known password everywhere.
+- **Consequences:** the release key (M3) must stay out of git, in a CI secret.

@@ -16,7 +16,7 @@ These can happen in any order once M1's backend exists. Until then, everything r
 |---|---|---|---|---|
 | M1 | Working remote, running on this PC | In progress: everything works; merge pending | — | [m1-working-remote.md](m1-working-remote.md) |
 | M2 | Home-lab deploy (dev + prod) | Not started | M1 backend | [m2-homelab-deploy.md](m2-homelab-deploy.md) |
-| M3 | Android app (native client) | Not started | M1 API | [m3-android-app.md](m3-android-app.md) |
+| M3 | Android app (native client) | In progress: first build published | M1 API | [m3-android-app.md](m3-android-app.md) |
 
 Status values: Not started · In progress · Blocked (say on what) · Done.
 
@@ -57,7 +57,7 @@ Everything lives in the `iris` monorepo (`daedalus1215/iris`, D7):
 | Apple TV | "Bedroom": Apple TV 4K, tvOS 26.6, `172.16.0.242`. Companion (TCP 49153) and AirPlay (TCP 7000) both require pairing. This PC is paired over both as "Iris (local)". |
 | This PC | ARM (aarch64). `172.16.0.102` on Wi-Fi, the same /24 as the Apple TV. Tailscale `100.93.232.17`. Node 26, Python 3.14, uv. The ufw firewall blocks incoming connections except LocalSend. |
 | Docker here | 29.8 and Compose 5.5 are installed, but the service is inactive and the user isn't in the `docker` group. |
-| Android tooling here | None: no JDK, Android SDK or adb. |
+| Android tooling here | This Mac can't run `aapt2` (ARM with 16 KB pages), so APKs build in GitHub Actions (D10). A JDK is still needed here for the core tests. |
 | pyatv | 0.18.0 runs with `uvx --from pyatv atvremote …`, no install needed. |
 
 ## Open questions

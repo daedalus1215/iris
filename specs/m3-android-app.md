@@ -1,6 +1,6 @@
 # M3: Android app (native client)
 
-**Status:** Not started
+**Status:** In progress: first build published; testing on the phone next
 **Depends on:** M1 API. Development can run against the local backend before M2 is done.
 **Outcome:** An app on the phone that controls the Apple TV through the home-lab backend, with dev and prod builds installed side by side.
 
@@ -38,29 +38,32 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 
 ## Tasks
 
-### Tooling (this PC)
+### Tooling
 
-- [ ] Install JDK 17 and the Android SDK (cmdline-tools, platform 35, build-tools), or Android Studio
-- [ ] Build from the CLI with `./gradlew assembleDevDebug`, run from `android/`
-- [ ] Phone: turn on developer options and USB or wireless debugging; confirm `adb install` works
+- [x] Decide where APKs get built: GitHub Actions, because this Mac can't run `aapt2` (D10)
+- [x] CI: core tests and both APKs on every push to `android/`, published to the rolling [`android-dev` pre-release](https://github.com/daedalus1215/iris/releases/tag/android-dev)
+- [ ] JDK 21 on this Mac for running core tests locally (you: `sudo pacman -S jdk21-openjdk android-tools`)
+- [ ] Optional: install over `adb` (wireless debugging) instead of from the release page
 
 ### App
 
-- [ ] Choose the applicationId, replacing `com.example.iris` before the first install on the phone
-- [ ] Bump the AGP, Kotlin and Compose versions
-- [ ] dev and prod flavors, and the network security config
-- [ ] API client, models and error handling
-- [ ] Remote screen
-- [ ] Devices screen
-- [ ] Settings screen
-- [ ] Volume keys
-- [ ] Unit tests for the API client and ViewModels (MockWebServer)
+- [x] Application id `io.github.daedalus1215.iris`, with `.dev` for the dev flavor (D12)
+- [x] AGP 9.4.1, Gradle 9.8, Kotlin 2.4.20, Compose BOM 2026.09; compileSdk 37, minSdk 26 (D11)
+- [x] dev and prod flavors, and plain HTTP allowed (D13)
+- [x] `core`: API client, models and error messages, with tests against MockWebServer
+- [x] `core`: hold-to-repeat (400 ms delay, then every 150 ms, one request at a time), tested on virtual time
+- [x] `core`: remote state (devices, selection, errors), tested against a fake client
+- [x] Remote screen: power, d-pad, back, home, media and volume keys, with haptics
+- [x] Device picker and scan in the header (instead of a separate devices screen)
+- [x] Settings dialog: server address and token
+- [x] The phone's volume keys control the TV while the app is open
+- [ ] Try it on the phone (dev build against this PC's backend)
 
 ### Release
 
-- [ ] Signed release APK, with the keystore kept out of git
-- [ ] Install the prod and dev builds on the phone
-- [ ] Optional: CI builds the APK on tags, filtered to changes in `android/`
+- [ ] Release signing key kept in a CI secret, not in git
+- [ ] Signed release APK on tags
+- [ ] Point the prod flavor at the home-lab prod server (after M2)
 
 ## Acceptance criteria
 
