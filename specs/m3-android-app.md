@@ -1,6 +1,6 @@
 # M3: Android app (native client)
 
-**Status:** In progress: first build published; testing on the phone next
+**Status:** In progress: works on the phone against dev, including pairing; release signing and prod remain
 **Depends on:** M1 API. Development can run against the local backend before M2 is done.
 **Outcome:** An app on the phone that controls the Apple TV through the home-lab backend, with dev and prod builds installed side by side.
 
@@ -58,7 +58,7 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 - [x] Settings dialog: server address and token
 - [x] The phone's volume keys control the TV while the app is open
 - [x] Pairing in the app: core client and controller with tests, plus a pairing dialog with PIN entry
-- [ ] Try it on the phone (dev build against this PC's backend)
+- [x] Try it on the phone: Iris Dev against the dev server. Paired Living Room over both protocols from the app, then controlled it (2026-10-04).
 
 ### Release
 

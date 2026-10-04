@@ -15,8 +15,8 @@ These can happen in any order once M1's backend exists. Until then, everything r
 | ID | Milestone | Status | Depends on | Spec |
 |---|---|---|---|---|
 | M1 | Working remote, running on this PC | In progress: everything works; merge pending | — | [m1-working-remote.md](m1-working-remote.md) |
-| M2 | Home-lab deploy (dev + prod) | In progress: images pushed; deploy needs the age key | M1 backend | [m2-homelab-deploy.md](m2-homelab-deploy.md) |
-| M3 | Android app (native client) | In progress: first build published | M1 API | [m3-android-app.md](m3-android-app.md) |
+| M2 | Home-lab deploy (dev + prod) | In progress: dev live and used from the phone; prod next | M1 backend | [m2-homelab-deploy.md](m2-homelab-deploy.md) |
+| M3 | Android app (native client) | In progress: works on the phone, pairing included | M1 API | [m3-android-app.md](m3-android-app.md) |
 
 Status values: Not started · In progress · Blocked (say on what) · Done.
 
