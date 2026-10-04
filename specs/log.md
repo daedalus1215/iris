@@ -2,6 +2,20 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-04 (late)
+
+**Done**
+- Installed the SOPS age key on this Mac (`~/.config/sops/age/keys.txt`, mode 600). Deployed Iris to dev with `./compose/ship.sh iris dev` (`cb02c43`). Checked through Traefik: the page, the API, and both Apple TVs listed (not paired). Home-lab commit `0b41890`.
+- Pairing in the Android app (branch `android-pairing`):
+  - Header link button, and **Pair** under "isn't paired yet".
+  - Show PIN, then type the PIN on the phone.
+  - Companion is enough (one PIN per TV); AirPlay is optional.
+  - 6 new core tests, 28 in total, run locally now that a JDK is installed.
+
+**Next**
+- The phone has to reach dev before pairing it from the app: deploy the DNS names (fingerprint check), and make the router change for `.lan`.
+- Then pair dev from the app, and later prod.
+
 ## 2026-10-04 (night)
 
 **Done**

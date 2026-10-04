@@ -41,4 +41,23 @@ class FakeClient(
         failWith?.let { throw it }
         sent += deviceId to command
     }
+
+    var goodPin = "1234"
+
+    override suspend fun startPairing(deviceId: String, protocol: PairingProtocol): String {
+        failWith?.let { throw it }
+        return "session-${protocol.apiName}"
+    }
+
+    override suspend fun finishPairing(deviceId: String, protocol: PairingProtocol, session: String, pin: String) {
+        if (pin != goodPin) throw IrisException("pairing failed, check the PIN", 400)
+        devices = devices.map { device ->
+            if (device.id != deviceId) {
+                device
+            } else when (protocol) {
+                PairingProtocol.COMPANION -> device.copy(paired = device.paired.copy(companion = true))
+                PairingProtocol.AIRPLAY -> device.copy(paired = device.paired.copy(airplay = true))
+            }
+        }
+    }
 }

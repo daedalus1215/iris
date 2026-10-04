@@ -33,7 +33,7 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 ### Other behavior
 
 - **Volume keys:** the phone's volume buttons send `volume_up` and `volume_down` while the app is open, if the M1 spike shows volume works.
-- **Pairing:** stays in the web UI for this version. It happens once per environment.
+- **Pairing:** in the app as well as the web remote. Use the link button in the header, or **Pair** under "isn't paired yet". Show PIN puts a PIN on the TV, and you type it into the phone. Companion is enough, so it's one PIN per TV per server; AirPlay is optional.
 - **Architecture:** a single Compose activity, with ViewModel + StateFlow and a repository over the API client.
 
 ## Tasks
@@ -57,6 +57,7 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 - [x] Device picker and scan in the header (instead of a separate devices screen)
 - [x] Settings dialog: server address and token
 - [x] The phone's volume keys control the TV while the app is open
+- [x] Pairing in the app: core client and controller with tests, plus a pairing dialog with PIN entry
 - [ ] Try it on the phone (dev build against this PC's backend)
 
 ### Release
@@ -75,4 +76,4 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 ## Later, or out of scope
 
 - Standalone mode, where the phone talks to the Apple TV directly with no backend (see D4).
-- Pairing inside the app, a quick-settings tile, a home-screen widget, and keyboard text entry (pyatv has a keyboard interface).
+- A quick-settings tile, a home-screen widget, and keyboard text entry (pyatv has a keyboard interface).

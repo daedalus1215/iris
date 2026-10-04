@@ -20,4 +20,18 @@ data class Device(
 ) {
     /** Commands work once either protocol is paired. */
     val canControl: Boolean get() = paired.companion || paired.airplay
+
+    fun isPaired(protocol: PairingProtocol): Boolean = when (protocol) {
+        PairingProtocol.COMPANION -> paired.companion
+        PairingProtocol.AIRPLAY -> paired.airplay
+    }
+}
+
+/**
+ * Each protocol is paired separately, with its own PIN shown on the TV. Companion alone
+ * carries every command Iris sends; AirPlay adds nothing Iris uses yet.
+ */
+enum class PairingProtocol(val apiName: String) {
+    COMPANION("companion"),
+    AIRPLAY("airplay"),
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.daedalus1215.iris.core.HttpIrisClient
+import io.github.daedalus1215.iris.core.PairingProtocol
 import io.github.daedalus1215.iris.core.RemoteController
 import io.github.daedalus1215.iris.core.RemoteState
 import kotlinx.coroutines.flow.StateFlow
@@ -41,6 +42,14 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     fun press(command: String) = controller.press(command)
 
     fun release() = controller.release()
+
+    fun openPairing(deviceId: String) = controller.openPairing(deviceId)
+
+    fun closePairing() = controller.closePairing()
+
+    fun startPairing(protocol: PairingProtocol) = controller.startPairing(protocol)
+
+    fun submitPin(pin: String) = controller.submitPin(pin)
 
     fun saveSettings(serverUrl: String, token: String) {
         settings.serverUrl = serverUrl.trim()

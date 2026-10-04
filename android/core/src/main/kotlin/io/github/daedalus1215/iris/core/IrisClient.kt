@@ -2,12 +2,15 @@ package io.github.daedalus1215.iris.core
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -23,6 +26,11 @@ interface IrisClient {
     suspend fun scan(): List<Device>
 
     suspend fun send(deviceId: String, command: String)
+
+    /** Starts pairing; the Apple TV shows a PIN. Returns the session to finish it with. */
+    suspend fun startPairing(deviceId: String, protocol: PairingProtocol): String
+
+    suspend fun finishPairing(deviceId: String, protocol: PairingProtocol, session: String, pin: String)
 }
 
 /** Anything that went wrong talking to the server, with a message fit to show the user. */
@@ -47,6 +55,21 @@ class HttpIrisClient(
         execute("POST", "devices", deviceId, "commands", command)
     }
 
+    override suspend fun startPairing(deviceId: String, protocol: PairingProtocol): String =
+        decode<PairingStarted>(execute("POST", "devices", deviceId, "pairing", protocol.apiName)).session
+
+    override suspend fun finishPairing(
+        deviceId: String,
+        protocol: PairingProtocol,
+        session: String,
+        pin: String,
+    ) {
+        execute(
+            "POST", "devices", deviceId, "pairing", protocol.apiName, "pin",
+            jsonBody = json.encodeToString(PinBody(session, pin)),
+        )
+    }
+
     private fun url(segments: Array<out String>): HttpUrl {
         val base = base ?: throw IrisException(
             if (displayUrl.isEmpty()) "No Iris server address set" else "Not a valid server address: $displayUrl",
@@ -57,10 +80,11 @@ class HttpIrisClient(
             .build()
     }
 
-    private suspend fun execute(method: String, vararg segments: String): String {
+    private suspend fun execute(method: String, vararg segments: String, jsonBody: String? = null): String {
+        val body = jsonBody?.toRequestBody(JSON) ?: EMPTY_BODY
         val request = Request.Builder()
             .url(url(segments))
-            .method(method, if (method == "POST") EMPTY_BODY else null)
+            .method(method, if (method == "POST") body else null)
             .apply { if (!token.isNullOrBlank()) header("Authorization", "Bearer $token") }
             .build()
         return withContext(Dispatchers.IO) {
@@ -103,6 +127,7 @@ class HttpIrisClient(
 
     companion object {
         private val EMPTY_BODY = ByteArray(0).toRequestBody()
+        private val JSON = "application/json".toMediaType()
         private val json = Json { ignoreUnknownKeys = true }
 
         val defaultHttpClient: OkHttpClient = OkHttpClient.Builder()
@@ -112,3 +137,9 @@ class HttpIrisClient(
             .build()
     }
 }
+
+@Serializable
+private data class PairingStarted(val session: String)
+
+@Serializable
+private data class PinBody(val session: String, val pin: String)

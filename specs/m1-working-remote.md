@@ -99,6 +99,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
   | Through the new API, later presses | about 6 ms |
 
 - **pyatv API:** `remote_control.volume_up/down` are deprecated; the backend uses `audio.volume_up/down`.
+- **Companion alone is enough:** pyatv's Companion protocol implements every command Iris sends: arrows, select, menu, home, play/pause, previous/next, skip and volume, plus power. So pairing Companion alone (one PIN per TV) gives a working remote. AirPlay adds things Iris doesn't use, like now-playing details.
 - **Confirmed from the phone:** play/pause, previous/next, volume and power off/on all work. Nothing is left to check.
 
 ## Tasks

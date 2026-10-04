@@ -110,4 +110,67 @@ class RemoteControllerTest {
         assertEquals("prod", state.env)
         assertEquals(listOf(DEN_UNPAIRED), state.devices)
     }
+
+    @Test
+    fun `pairing shows a PIN, takes it, and the device becomes controllable`() = runTest {
+        val controller = loaded(FakeClient(devices = listOf(DEN_UNPAIRED)))
+        assertFalse(controller.state.value.canControl)
+
+        controller.openPairing("DEN")
+        controller.startPairing(PairingProtocol.COMPANION)
+        advanceUntilIdle()
+        val waiting = controller.state.value.pairing!!
+        assertTrue(waiting.awaitingPin)
+        assertEquals(PairingProtocol.COMPANION, waiting.protocol)
+
+        controller.submitPin("1234")
+        advanceUntilIdle()
+
+        val state = controller.state.value
+        assertEquals(PairingState("DEN"), state.pairing)
+        assertTrue(state.pairingDevice!!.isPaired(PairingProtocol.COMPANION))
+        assertFalse(state.pairingDevice!!.isPaired(PairingProtocol.AIRPLAY))
+        assertTrue(state.canControl)
+    }
+
+    @Test
+    fun `a wrong PIN shows why and starts over`() = runTest {
+        val controller = loaded(FakeClient(devices = listOf(DEN_UNPAIRED)))
+
+        controller.openPairing("DEN")
+        controller.startPairing(PairingProtocol.COMPANION)
+        advanceUntilIdle()
+        controller.submitPin("9999")
+        advanceUntilIdle()
+
+        val pairing = controller.state.value.pairing!!
+        assertEquals("pairing failed, check the PIN", pairing.error)
+        assertFalse(pairing.awaitingPin)
+        assertNull(pairing.protocol)
+        assertFalse(controller.state.value.canControl)
+    }
+
+    @Test
+    fun `a failure to start pairing is shown`() = runTest {
+        val client = FakeClient(devices = listOf(DEN_UNPAIRED))
+        val controller = loaded(client)
+
+        client.failWith = IrisException("Apple TV unreachable")
+        controller.openPairing("DEN")
+        controller.startPairing(PairingProtocol.AIRPLAY)
+        advanceUntilIdle()
+
+        assertEquals("Apple TV unreachable", controller.state.value.pairing!!.error)
+        assertFalse(controller.state.value.pairing!!.busy)
+    }
+
+    @Test
+    fun `closing the pairing screen forgets it`() = runTest {
+        val controller = loaded(FakeClient(devices = listOf(DEN_UNPAIRED)))
+
+        controller.openPairing("DEN")
+        controller.closePairing()
+
+        assertNull(controller.state.value.pairing)
+    }
 }

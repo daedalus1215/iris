@@ -7,7 +7,7 @@
       <q-card-section>
         <div class="text-h6">Pair with {{ device.name }}</div>
         <div class="text-caption">
-          Iris pairs twice, once per protocol. Each time, a 4-digit PIN appears on the TV.
+          Show PIN puts a 4-digit PIN on the TV; type it here. Companion is all the remote needs.
         </div>
       </q-card-section>
 
@@ -84,8 +84,8 @@ const emit = defineEmits<{
 
 const PROTOCOLS: PairingProtocol[] = ['companion', 'airplay']
 const LABELS: Record<PairingProtocol, { name: string; use: string }> = {
-  companion: { name: 'Companion', use: 'Buttons, volume, power' },
-  airplay: { name: 'AirPlay', use: 'Buttons, now playing' },
+  companion: { name: 'Companion', use: 'Every button on the remote' },
+  airplay: { name: 'AirPlay', use: 'Optional: nothing in Iris needs it yet' },
 }
 
 const current = ref<PairingProtocol | null>(null)
