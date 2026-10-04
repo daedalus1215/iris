@@ -12,8 +12,10 @@ Newest first. Add one entry per working session.
   - Wrote the app: a `core` Kotlin module (API client, hold-to-repeat, remote state, with tests), a remote screen, a settings dialog, phone volume keys controlling the TV, and dev/prod flavors.
 - The first CI run passed (core tests, both APKs). The APKs are on the [android-dev pre-release](https://github.com/daedalus1215/iris/releases/tag/android-dev).
 
+- First install on the phone: "no connection". The phone's requests never reached the backend. Cause: Android 17 blocks apps targeting API 37 from reaching the local network unless they hold the new `ACCESS_LOCAL_NETWORK` permission. The app now asks for it.
+
 **Next**
-- You: install Iris Dev on the phone from the release page and try it against this PC's backend.
+- You: reinstall Iris Dev from the release page, allow "Nearby devices", and try it against this PC's backend.
 - You: run `gh auth login`, so PRs can be opened from here, and so CI logs can be read if a build fails.
 - Open PRs: `backend` into `main` (M1), then `android`.
 

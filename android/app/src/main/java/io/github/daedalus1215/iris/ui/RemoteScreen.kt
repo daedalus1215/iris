@@ -63,7 +63,11 @@ private val KeyShape = RoundedCornerShape(22.dp)
 private val KeySpacing = 12.dp
 
 @Composable
-fun RemoteScreen(viewModel: RemoteViewModel) {
+fun RemoteScreen(
+    viewModel: RemoteViewModel,
+    localNetworkAllowed: Boolean,
+    onAllowLocalNetwork: () -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showSettings by rememberSaveable { mutableStateOf(false) }
     val enabled = state.canControl
@@ -87,7 +91,11 @@ fun RemoteScreen(viewModel: RemoteViewModel) {
             onSettings = { showSettings = true },
         )
         DevicePicker(state, onSelect = viewModel::select)
-        StatusLine(state)
+        if (localNetworkAllowed) {
+            StatusLine(state)
+        } else {
+            LocalNetworkBanner(onAllowLocalNetwork)
+        }
 
         KeyRow {
             IconKey(R.drawable.ic_power_settings_new, "Turn off", IrisColors.PowerOff, enabled) {
@@ -224,6 +232,19 @@ private fun StatusLine(state: RemoteState) {
         else -> return
     }
     Text(text, color = color, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
+}
+
+@Composable
+private fun LocalNetworkBanner(onAllow: () -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            "Iris needs the Nearby devices permission to reach the server on your Wi-Fi.",
+            color = IrisColors.Badge,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        TextButton(onClick = onAllow) { Text("Allow") }
+    }
 }
 
 @Composable

@@ -15,7 +15,8 @@ android {
         applicationId = "io.github.daedalus1215.iris"
         minSdk = 26
         targetSdk = 37
-        versionCode = 1
+        // CI numbers each build, so a newer APK always installs over an older one.
+        versionCode = providers.environmentVariable("GITHUB_RUN_NUMBER").map(String::toInt).getOrElse(1)
         versionName = "0.1.0"
     }
 
