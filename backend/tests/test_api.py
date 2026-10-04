@@ -9,7 +9,7 @@ from iris_backend.settings import Settings
 
 from .fakes import GOOD_PIN, FakeClient, FakeConfig
 
-DEVICE = "B6:B8:78:10:43:D0"
+DEVICE = "AA:BB:CC:00:00:01"
 
 
 @pytest.fixture
@@ -44,7 +44,7 @@ def test_devices_scans_once_and_reports_pairing(client, fake):
     assert devices[0] == {
         "id": DEVICE,
         "name": "Bedroom",
-        "address": "172.16.0.242",
+        "address": "192.0.2.10",
         "model": "Apple TV 4K",
         "os": "tvOS 26.6",
         "paired": {"companion": True, "airplay": True},
@@ -188,12 +188,12 @@ def test_serves_the_web_remote(fake, tmp_path):
 
 
 def test_settings_from_env(monkeypatch):
-    monkeypatch.setenv("IRIS_SCAN_HOSTS", "172.16.0.242, 10.0.0.5")
+    monkeypatch.setenv("IRIS_SCAN_HOSTS", "192.0.2.10, 192.0.2.11")
     monkeypatch.setenv("IRIS_STATIC_DIR", "")
     monkeypatch.setenv("IRIS_DATA_DIR", "~/iris-data")
 
     settings = Settings(_env_file=None)
 
-    assert settings.scan_hosts == ["172.16.0.242", "10.0.0.5"]
+    assert settings.scan_hosts == ["192.0.2.10", "192.0.2.11"]
     assert settings.static_dir is None
     assert not str(settings.data_dir).startswith("~")

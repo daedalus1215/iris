@@ -48,7 +48,9 @@ class HttpIrisClient(
     }
 
     private fun url(segments: Array<out String>): HttpUrl {
-        val base = base ?: throw IrisException("Not a valid server address: $displayUrl")
+        val base = base ?: throw IrisException(
+            if (displayUrl.isEmpty()) "No Iris server address set" else "Not a valid server address: $displayUrl",
+        )
         return base.newBuilder()
             .addPathSegment("api")
             .apply { segments.forEach { addPathSegment(it) } }

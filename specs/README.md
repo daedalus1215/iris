@@ -30,7 +30,7 @@ Status values: Not started · In progress · Blocked (say on what) · Done.
  ┌─────────── iris container (home-lab Docker host) ────────────┐
  │ FastAPI                                                      │
  │   /api/*  → device registry → pyatv connection (kept open) ──┼──► Apple TV "Bedroom"
- │   /*      → built web/ files                                 │    172.16.0.242
+ │   /*      → built web/ files                                 │    <bedroom-ip>
  │ /data     → pairing credentials (volume)                     │    Companion :49153, AirPlay :7000
  └──────────────────────────────────────────────────────────────┘
    prod :8080 · dev :8081 (home lab)    local :8080 (this PC)
@@ -54,16 +54,18 @@ Everything lives in the `iris` monorepo (`daedalus1215/iris`, D7):
 
 | What | Details (as of 2026-10-04) |
 |---|---|
-| Apple TV | "Bedroom": Apple TV 4K, tvOS 26.6, `172.16.0.242`. Companion (TCP 49153) and AirPlay (TCP 7000) both require pairing. This PC is paired over both as "Iris (local)". |
-| Apple TV 2 | "Living Room": Apple TV 4K (gen 2), tvOS 26.6, `172.16.0.164`. Companion on TCP 55339 (ports differ per device), AirPlay on TCP 7000. Paired over both protocols as "Iris (local)". |
-| This PC | ARM (aarch64). `172.16.0.102` on Wi-Fi, the same /24 as the Apple TV. Tailscale `100.93.232.17`. Node 26, Python 3.14, uv. The ufw firewall blocks incoming connections except LocalSend. |
+| Apple TV | "Bedroom": Apple TV 4K, tvOS 26.6, `<bedroom-ip>`. Companion (TCP 49153) and AirPlay (TCP 7000) both require pairing. This PC is paired over both as "Iris (local)". |
+| Apple TV 2 | "Living Room": Apple TV 4K (gen 2), tvOS 26.6, `<living-room-ip>`. Companion on TCP 55339 (ports differ per device), AirPlay on TCP 7000. Paired over both protocols as "Iris (local)". |
+| This PC | ARM (aarch64). `<laptop-ip>` on Wi-Fi, the same LAN as the Apple TVs. Node 26, Python 3.14, uv. The ufw firewall blocks incoming connections except LocalSend. |
 | Docker here | 29.8 and Compose 5.5 are installed, but the service is inactive and the user isn't in the `docker` group. |
 | Android tooling here | This Mac can't run `aapt2` (ARM with 16 KB pages), so APKs build in GitHub Actions (D10). A JDK is still needed here for the core tests. |
 | pyatv | 0.18.0 runs with `uvx --from pyatv atvremote …`, no install needed. |
 
+Real addresses for the `<…-ip>` placeholders are in `LOCAL.md` (git-ignored) and the home-lab `INVENTORY.md`. This repo is public, so they stay out of it (D15).
+
 ## Open questions
 
-- [ ] Home-lab host: IP or hostname, OS, Docker version. Is it on the Apple TV's subnet (172.16.0.0/24)?
+- [ ] Home-lab host: IP or hostname, OS, Docker version. Is it on the Apple TVs' LAN?
 - [ ] Image registry: GitHub Container Registry via Actions, or build on the home-lab host?
 - [ ] Is there a reverse proxy or local DNS in the home lab (for names like `iris.<domain>`)?
 - [ ] Auth: is LAN plus Tailscale enough, or should the API also require a token?

@@ -27,7 +27,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch {
             state.map { it.selectedId }.distinctUntilChanged().collect { settings.selectedDeviceId = it }
         }
-        controller.refresh()
+        if (settings.serverUrl.isNotBlank()) controller.refresh()
     }
 
     fun refresh() = controller.refresh()

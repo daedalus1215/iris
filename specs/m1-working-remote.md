@@ -76,7 +76,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 ## Spike results (2026-10-04)
 
 - **Pairing:** done over Companion and AirPlay as "Iris (local)". Credentials are in `~/.local/share/iris/local/pyatv.conf` (mode 600).
-- **Device id:** pyatv's identifier for Bedroom is `B6:B8:78:10:43:D0`, the AirPlay device id, which equals the MAC. Bedroom also advertises a Companion id, `B7B87810-43D0-4CEF-8DC8-6F935F459340`. The backend accepts any of a device's identifiers (D6).
+- **Device id:** pyatv's identifier for Bedroom is its AirPlay device id, which equals the MAC. Bedroom also advertises a Companion UUID. The backend accepts any of a device's identifiers (D6).
 - **What each protocol provides** (pyatv's feature report):
 
   | Feature | Companion only | AirPlay only | Both |
@@ -135,7 +135,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 
 - [x] One command that starts both locally: `make run` at the repo root
 - [x] Open this PC's firewall for the phone (ufw blocks incoming connections by default)
-- [x] Test from the phone over Wi-Fi at `http://172.16.0.102:8080`. Works, and presses feel instant.
+- [x] Test from the phone over Wi-Fi at `http://<laptop-ip>:8080`. Works, and presses feel instant.
 - [ ] Merge into `main` through a PR
 
 ## Acceptance criteria
@@ -151,5 +151,5 @@ All configuration comes from environment variables. Nothing is hardcoded.
 ## Risks
 
 - **tvOS 26.6 vs pyatv 0.18.** A new tvOS release can break pyatv. The spike will catch this; if it happens, check pyatv's issue tracker and pin a working version.
-- **Unstable MAC.** Bedroom's MAC (`B6:B8:…`) is locally administered, which suggests a private, randomized Wi-Fi address. If it changes, MAC-based ids and DHCP reservations break. Use pyatv's identifier, and check whether the Apple TV's address stays stable.
+- **Unstable MAC.** Bedroom's MAC is locally administered, which suggests a private, randomized Wi-Fi address. If it changes, MAC-based ids and DHCP reservations break. Use pyatv's identifier, and check whether the Apple TV's address stays stable.
 - **Deep sleep.** The first command after the Apple TV has been idle may be slow, or need a wake-up first.

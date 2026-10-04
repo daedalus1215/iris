@@ -3,7 +3,8 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
-fun serverUrl(name: String) = "\"${providers.gradleProperty(name).get()}\""
+// Optional, from ~/.gradle/gradle.properties (see gradle.properties); empty means "ask the user".
+fun serverUrl(name: String) = "\"${providers.gradleProperty(name).getOrElse("")}\""
 
 android {
     namespace = "io.github.daedalus1215.iris"

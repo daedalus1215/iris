@@ -1,9 +1,9 @@
 package io.github.daedalus1215.iris.core
 
 val BEDROOM = Device(
-    id = "B6:B8:78:10:43:D0",
+    id = "AA:BB:CC:00:00:01",
     name = "Bedroom",
-    address = "172.16.0.242",
+    address = "192.0.2.10",
     model = "Apple TV 4K",
     os = "tvOS 26.6",
     paired = Paired(companion = true, airplay = true),
@@ -13,11 +13,11 @@ val BEDROOM = Device(
 val DEN_UNPAIRED = BEDROOM.copy(
     id = "DEN",
     name = "Den",
-    address = "172.16.0.50",
+    address = "192.0.2.11",
     paired = Paired(companion = false, airplay = false),
 )
 
-const val DEVICES_JSON = """[{"id":"B6:B8:78:10:43:D0","name":"Bedroom","address":"172.16.0.242",
+const val DEVICES_JSON = """[{"id":"AA:BB:CC:00:00:01","name":"Bedroom","address":"192.0.2.10",
 "model":"Apple TV 4K","os":"tvOS 26.6","paired":{"companion":true,"airplay":true},"connected":false,
 "added_later":"ignored"}]"""
 
