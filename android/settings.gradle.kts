@@ -20,5 +20,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Iris"
+
+// Plain Kotlin (no Android SDK needed), so it builds and tests on any machine: ./gradlew -p core test
+includeBuild("core")
 include(":app")
- 

@@ -1,6 +1,6 @@
 # M3: Android app (native client)
 
-**Status:** Not started
+**Status:** In progress: works on the phone against dev, including pairing; release signing and prod remain
 **Depends on:** M1 API. Development can run against the local backend before M2 is done.
 **Outcome:** An app on the phone that controls the Apple TV through the home-lab backend, with dev and prod builds installed side by side.
 
@@ -33,34 +33,38 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 ### Other behavior
 
 - **Volume keys:** the phone's volume buttons send `volume_up` and `volume_down` while the app is open, if the M1 spike shows volume works.
-- **Pairing:** stays in the web UI for this version. It happens once per environment.
+- **Pairing:** in the app as well as the web remote. Use the link button in the header, or **Pair** under "isn't paired yet". Show PIN puts a PIN on the TV, and you type it into the phone. Companion is enough, so it's one PIN per TV per server; AirPlay is optional.
 - **Architecture:** a single Compose activity, with ViewModel + StateFlow and a repository over the API client.
 
 ## Tasks
 
-### Tooling (this PC)
+### Tooling
 
-- [ ] Install JDK 17 and the Android SDK (cmdline-tools, platform 35, build-tools), or Android Studio
-- [ ] Build from the CLI with `./gradlew assembleDevDebug`, run from `android/`
-- [ ] Phone: turn on developer options and USB or wireless debugging; confirm `adb install` works
+- [x] Decide where APKs get built: GitHub Actions, because this Mac can't run `aapt2` (D10)
+- [x] CI: core tests and both APKs on every push to `android/`, published to the rolling [`android-dev` pre-release](https://github.com/daedalus1215/iris/releases/tag/android-dev)
+- [ ] JDK 21 on this Mac for running core tests locally (you: `sudo pacman -S jdk21-openjdk android-tools`)
+- [ ] Optional: install over `adb` (wireless debugging) instead of from the release page
 
 ### App
 
-- [ ] Choose the applicationId, replacing `com.example.iris` before the first install on the phone
-- [ ] Bump the AGP, Kotlin and Compose versions
-- [ ] dev and prod flavors, and the network security config
-- [ ] API client, models and error handling
-- [ ] Remote screen
-- [ ] Devices screen
-- [ ] Settings screen
-- [ ] Volume keys
-- [ ] Unit tests for the API client and ViewModels (MockWebServer)
+- [x] Application id `io.github.daedalus1215.iris`, with `.dev` for the dev flavor (D12)
+- [x] AGP 9.4.1, Gradle 9.8, Kotlin 2.4.20, Compose BOM 2026.09; compileSdk 37, minSdk 26 (D11)
+- [x] dev and prod flavors, and plain HTTP allowed (D13)
+- [x] `core`: API client, models and error messages, with tests against MockWebServer
+- [x] `core`: hold-to-repeat (400 ms delay, then every 150 ms, one request at a time), tested on virtual time
+- [x] `core`: remote state (devices, selection, errors), tested against a fake client
+- [x] Remote screen: power, d-pad, back, home, media and volume keys, with haptics
+- [x] Device picker and scan in the header (instead of a separate devices screen)
+- [x] Settings dialog: server address and token
+- [x] The phone's volume keys control the TV while the app is open
+- [x] Pairing in the app: core client and controller with tests, plus a pairing dialog with PIN entry
+- [x] Try it on the phone: Iris Dev against the dev server. Paired Living Room over both protocols from the app, then controlled it (2026-10-04).
 
 ### Release
 
-- [ ] Signed release APK, with the keystore kept out of git
-- [ ] Install the prod and dev builds on the phone
-- [ ] Optional: CI builds the APK on tags, filtered to changes in `android/`
+- [ ] Release signing key kept in a CI secret, not in git
+- [ ] Signed release APK on tags
+- [ ] Point the prod flavor at the home-lab prod server (after M2)
 
 ## Acceptance criteria
 
@@ -72,4 +76,4 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 ## Later, or out of scope
 
 - Standalone mode, where the phone talks to the Apple TV directly with no backend (see D4).
-- Pairing inside the app, a quick-settings tile, a home-screen widget, and keyboard text entry (pyatv has a keyboard interface).
+- A quick-settings tile, a home-screen widget, and keyboard text entry (pyatv has a keyboard interface).
