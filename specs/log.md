@@ -2,6 +2,30 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-04 (direct port)
+
+**Done**
+- You'd rather not change the router, so phones now reach Iris on a port of its own (D17, home-lab D37). `web/nginx.conf` forwards `/api` to the backend, and the home lab publishes the web container on 8080.
+- Shipped it to dev (`c68517c`): `:8080` serves the page and the API; the Traefik routes and dev's bare IP still work.
+- Home-lab commit `1db6e25`: stack and env changes, plus D37, INVENTORY, README and a dns.md pointer.
+
+**Next**
+- You: merge `m2-prod` (merge commit). Then I rebuild dev from `main`, promote to prod2, and you point the Iris (prod) app at the prod host's `:8080` and pair both Apple TVs.
+
+## 2026-10-04 (prod)
+
+**Done**
+- You merged PR #2 into `main`. The merge rewrote the branch's commit IDs, but the content matched the tested branch exactly.
+- Rebuilt dev from `main` with `./compose/ship.sh iris dev` (`07fd521`); Living Room's dev pairing survived the redeploy.
+- Promoted to prod2 with `./compose/ship.sh iris prod2`. It's healthy, reports `env: prod`, and lists both Apple TVs (unpaired). Dev and prod2 run the same image digest, and the other prod apps were unaffected.
+- This Mac now has a `prod2-docker` context, plus an SSH config entry for prod2.
+- Home-lab commit `deploy(iris): 07fd521 to dev+prod2`, not pushed.
+
+**Next**
+- The phone has to reach `iris.lan`: deploy the DNS names (`deploy-shared.sh dns`, waiting on the fingerprint check), and make the router change for `.lan`.
+- Then pair prod from the app: Bedroom and Living Room, one PIN each. Also pair Bedroom on dev.
+- Push the home-lab commits; DHCP reservations for both Apple TVs.
+
 ## 2026-10-04 (late)
 
 **Done**

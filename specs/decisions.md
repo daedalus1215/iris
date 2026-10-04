@@ -141,3 +141,11 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - M2's own Compose files, Makefile targets and GHCR plan are dropped.
   - Real addresses live in the home-lab repo, which is private, rather than here (D15).
   - Deploys need the home lab's SOPS age key on the machine running them.
+
+### D17: Phones reach Iris on a port of its own, not through `.lan` names
+
+- **Date:** 2026-10-04
+- **Status:** Accepted
+- **Decision:** On each home-lab host, the `web` container is published on port 8080, outside Traefik. Its nginx forwards `/api` to the backend, using the network alias `iris-backend`. Phones use `http://<host-ip>:8080`.
+- **Why:** Phones can't resolve `.lan`, and the router is staying as it is. Prod's bare IP belongs to another app. A port of Iris's own needs no phone or router setup, and doesn't touch the other apps' Traefik.
+- **Details:** the rejected options are recorded in home-lab D37. The port gives up nothing Traefik currently adds; Iris uses no TLS or auth from Traefik.
