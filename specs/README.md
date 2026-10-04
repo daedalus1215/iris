@@ -55,6 +55,7 @@ Everything lives in the `iris` monorepo (`daedalus1215/iris`, D7):
 | What | Details (as of 2026-10-04) |
 |---|---|
 | Apple TV | "Bedroom": Apple TV 4K, tvOS 26.6, `172.16.0.242`. Companion (TCP 49153) and AirPlay (TCP 7000) both require pairing. This PC is paired over both as "Iris (local)". |
+| Apple TV 2 | "Living Room": Apple TV 4K (gen 2), tvOS 26.6, `172.16.0.164`. Companion on TCP 55339 (ports differ per device), AirPlay on TCP 7000. Not paired yet. |
 | This PC | ARM (aarch64). `172.16.0.102` on Wi-Fi, the same /24 as the Apple TV. Tailscale `100.93.232.17`. Node 26, Python 3.14, uv. The ufw firewall blocks incoming connections except LocalSend. |
 | Docker here | 29.8 and Compose 5.5 are installed, but the service is inactive and the user isn't in the `docker` group. |
 | Android tooling here | This Mac can't run `aapt2` (ARM with 16 KB pages), so APKs build in GitHub Actions (D10). A JDK is still needed here for the core tests. |
@@ -66,7 +67,7 @@ Everything lives in the `iris` monorepo (`daedalus1215/iris`, D7):
 - [ ] Image registry: GitHub Container Registry via Actions, or build on the home-lab host?
 - [ ] Is there a reverse proxy or local DNS in the home lab (for names like `iris.<domain>`)?
 - [ ] Auth: is LAN plus Tailscale enough, or should the API also require a token?
-- [ ] Can the Apple TV get a DHCP reservation, and does its address stay stable? (See M1 risks.)
+- [ ] Can both Apple TVs get DHCP reservations? `IRIS_SCAN_HOSTS` lists their addresses, so those addresses must not change.
 - [ ] Android applicationId to replace `com.example.iris`.
 
 ## Working with these specs
