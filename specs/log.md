@@ -2,6 +2,27 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-04 (afternoon)
+
+**Done**
+- M1 spike:
+  - Paired this PC with Bedroom over Companion and AirPlay, as "Iris (local)".
+  - Measured presses: about 7 ms over one open connection, vs 1.5–3.6 s with a new `atvremote` process per press.
+  - Recorded which features each protocol provides (see M1, "Spike results").
+- New Python backend (FastAPI + pyatv) in `backend/`, replacing NestJS: 24 tests, ruff clean. Tested live against Bedroom.
+- Web remote switched to the new API:
+  - Pairing dialog, hold-to-repeat without a backlog, Home and volume buttons, a single play/pause button, the d-pad fix, and an environment badge.
+- `make run` at the repo root serves everything at `http://172.16.0.102:8080`.
+- All of this is on branch `backend`, uncommitted.
+- Phone test: you opened the firewall and controlled Bedroom from the phone over Wi-Fi. Every button works (hold-to-repeat, play/pause, previous/next, volume, power), and it's very snappy.
+
+**Next**
+- Commit, open a PR, and merge into `main`. That closes M1, except for pairing through the web UI, which gets used in M2.
+- Then M2 (Docker) or M3 (Android).
+
+**Blockers**
+- None.
+
 ## 2026-10-04
 
 **Done**

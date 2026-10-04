@@ -38,11 +38,12 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Why:** The page and the API share an origin, so there's no CORS setup and no hardcoded API URL in the frontend. It's also one thing to deploy and version.
 - **Alternative:** separate frontend (nginx) and backend containers. That adds routing between them for no gain at this size.
 
-### D6: A device's id is pyatv's identifier, not its MAC
+### D6: A device's id is pyatv's identifier, and any of its identifiers finds it
 
 - **Date:** 2026-10-04
-- **Status:** Proposed
+- **Status:** Accepted
 - **Why:** Bedroom's MAC (`B6:B8:78:10:43:D0`) is locally administered, which suggests a private, randomized Wi-Fi address that can change.
+- **Finding:** pyatv's main identifier for Bedroom turned out to be that same value (its AirPlay device id). So the API uses it as the id, but looks a device up by any identifier it advertises, including the Companion UUID. If the MAC changes, a client holding the old id gets a 404 and has to rescan; the pairing itself is unaffected.
 
 ### D7: One monorepo, `daedalus1215/iris`
 
@@ -63,6 +64,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Status:** Proposed
 - **Why:** Multicast scanning (mDNS) and any connections the Apple TV opens back to the server work without extra setup. The cost is that ports come from `IRIS_PORT` instead of port mappings.
 - **Revisit:** bridge networking with `IRIS_SCAN_HOSTS` set may also work; test it in M2 if host networking is a problem.
+- **Note:** the backend now scans Bedroom directly by IP (`IRIS_SCAN_HOSTS`) on this PC, which works.
 
 ### D9: FastAPI rather than plain aiohttp
 

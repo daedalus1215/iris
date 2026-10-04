@@ -14,7 +14,7 @@ These can happen in any order once M1's backend exists. Until then, everything r
 
 | ID | Milestone | Status | Depends on | Spec |
 |---|---|---|---|---|
-| M1 | Working remote, running on this PC | Not started | — | [m1-working-remote.md](m1-working-remote.md) |
+| M1 | Working remote, running on this PC | In progress: everything works; merge pending | — | [m1-working-remote.md](m1-working-remote.md) |
 | M2 | Home-lab deploy (dev + prod) | Not started | M1 backend | [m2-homelab-deploy.md](m2-homelab-deploy.md) |
 | M3 | Android app (native client) | Not started | M1 API | [m3-android-app.md](m3-android-app.md) |
 
@@ -54,8 +54,8 @@ Everything lives in the `iris` monorepo (`daedalus1215/iris`, D7):
 
 | What | Details (as of 2026-10-04) |
 |---|---|
-| Apple TV | "Bedroom": Apple TV 4K, tvOS 26.6, `172.16.0.242`. Companion (TCP 49153) and AirPlay (TCP 7000) both require pairing; nothing is paired yet. It was in deep sleep during the scan. |
-| This PC | `172.16.0.102` on Wi-Fi, the same /24 as the Apple TV. Tailscale `100.93.232.17`. Node 26, Python 3.14, uv. |
+| Apple TV | "Bedroom": Apple TV 4K, tvOS 26.6, `172.16.0.242`. Companion (TCP 49153) and AirPlay (TCP 7000) both require pairing. This PC is paired over both as "Iris (local)". |
+| This PC | ARM (aarch64). `172.16.0.102` on Wi-Fi, the same /24 as the Apple TV. Tailscale `100.93.232.17`. Node 26, Python 3.14, uv. The ufw firewall blocks incoming connections except LocalSend. |
 | Docker here | 29.8 and Compose 5.5 are installed, but the service is inactive and the user isn't in the `docker` group. |
 | Android tooling here | None: no JDK, Android SDK or adb. |
 | pyatv | 0.18.0 runs with `uvx --from pyatv atvremote …`, no install needed. |
