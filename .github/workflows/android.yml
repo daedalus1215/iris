@@ -45,7 +45,6 @@ jobs:
       - name: Report failures
         if: failure()
         run: |
-          cat core-test.log apk-build.log 2>/dev/null | grep -E '^(e: |ERROR:|> )' | sed 's/%/%25/g; s/^/::error::/' || true
           python3 - <<'EOF'
           import glob
           import xml.etree.ElementTree as ET
@@ -57,6 +56,9 @@ jobs:
                       detail = " | ".join(line.strip() for line in text.splitlines()[:6])
                       print(f"::error title={case.get('classname')}::{case.get('name')}: {detail}")
           EOF
+          # GitHub keeps 10 annotations per step, so skip Gradle's task progress lines.
+          cat core-test.log apk-build.log 2>/dev/null | grep -E '^(e: |ERROR:|> )' | grep -v '^> Task ' \
+            | sed 's/%/%25/g; s/^/::error::/' || true
 
       - name: Upload APKs
         uses: actions/upload-artifact@v7
