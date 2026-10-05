@@ -1,12 +1,21 @@
+import contextlib
 import logging
 import secrets
-from contextlib import asynccontextmanager
 
-from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pyatv import exceptions
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from . import __version__
 from .devices import (
@@ -51,11 +60,22 @@ class PinBody(BaseModel):
     pin: str = Field(pattern=r"^\d{4}$")
 
 
+class TouchEvent(BaseModel):
+    phase: str
+    x: int = Field(ge=0, le=1000)
+    y: int = Field(ge=0, le=1000)
+
+
+def status_for(exc: Exception) -> int | None:
+    """The HTTP status ERROR_STATUS gives this exception, following its class hierarchy."""
+    return next((ERROR_STATUS[c] for c in type(exc).__mro__ if c in ERROR_STATUS), None)
+
+
 def create_app(settings: Settings | None = None, manager: DeviceManager | None = None) -> FastAPI:
     settings = settings or Settings()
     manager = manager or DeviceManager(settings)
 
-    @asynccontextmanager
+    @contextlib.asynccontextmanager
     async def lifespan(_: FastAPI):
         await manager.start()
         yield
@@ -106,6 +126,36 @@ def create_app(settings: Settings | None = None, manager: DeviceManager | None =
     ) -> Response:
         await manager.send(device_id, command, body.action if body else None)
         return Response(status_code=204)
+
+    @api.websocket("/devices/{device_id}/touch")
+    async def touch(websocket: WebSocket, device_id: str) -> None:
+        """A finger on the touchpad, as a stream of {phase, x, y}; x and y run 0 to 1000.
+
+        A phase is press, move or release. Errors come back as {detail, status}, and the
+        socket stays open, so the next touch can try again.
+        """
+        await websocket.accept()
+        held: TouchEvent | None = None  # last position while a finger is down
+        try:
+            while True:
+                message = await websocket.receive_text()
+                try:
+                    event = TouchEvent.model_validate_json(message)
+                    await manager.touch(device_id, event.phase, event.x, event.y)
+                    held = event if event.phase != "release" else None
+                except ValidationError:
+                    await websocket.send_json({"detail": "bad touch event", "status": 400})
+                except tuple(ERROR_STATUS) as e:
+                    status = status_for(e)
+                    if status >= 500:
+                        log.warning("touch on %s -> %d: %r", device_id, status, e)
+                    detail = str(e) or type(e).__name__
+                    await websocket.send_json({"detail": detail, "status": status})
+        except WebSocketDisconnect:
+            # Don't leave a finger resting on the Apple TV's touchpad.
+            if held is not None:
+                with contextlib.suppress(Exception):
+                    await manager.touch(device_id, "release", held.x, held.y)
 
     def error_handler(status: int):
         async def handle(request: Request, exc: Exception) -> JSONResponse:
