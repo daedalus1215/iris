@@ -33,7 +33,8 @@ import type { TouchPhase } from 'src/api'
 
 const props = defineProps<{ disabled: boolean }>()
 const emit = defineEmits<{
-  (e: 'touch', phase: TouchPhase, x: number, y: number): void
+  // t is when, in ms on the page's clock (event.timeStamp).
+  (e: 'touch', phase: TouchPhase, x: number, y: number, t: number): void
   (e: 'tap'): void
   (e: 'longPress'): void
 }>()
@@ -54,6 +55,7 @@ let pointerId: number | null = null
 let mode: 'pending' | 'drag' | 'held' = 'pending'
 let start = { x: 0, y: 0 }
 let last = { x: 0, y: 0 }
+let lastTime = 0
 let lastSent = 0
 let longPressTimer: number | undefined
 
@@ -66,6 +68,7 @@ const toTv = (point: { x: number; y: number }) => {
 
 const follow = (event: PointerEvent) => {
   last = { x: event.clientX, y: event.clientY }
+  lastTime = event.timeStamp
   const rect = pad.value!.getBoundingClientRect()
   glow.value = { x: event.clientX - rect.left, y: event.clientY - rect.top }
 }
@@ -97,10 +100,10 @@ const onMove = (event: PointerEvent) => {
     if (Math.hypot(last.x - start.x, last.y - start.y) <= SLOP_PX) return
     window.clearTimeout(longPressTimer)
     mode = 'drag'
-    emit('touch', 'press', ...toTv(last))
+    emit('touch', 'press', ...toTv(last), lastTime)
     lastSent = event.timeStamp
   } else if (event.timeStamp - lastSent >= TOUCH_INTERVAL_MS) {
-    emit('touch', 'move', ...toTv(last))
+    emit('touch', 'move', ...toTv(last), lastTime)
     lastSent = event.timeStamp
   }
 }
@@ -111,7 +114,7 @@ const onUp = (event: PointerEvent) => {
     navigator.vibrate?.(10)
     emit('tap')
   } else if (mode === 'drag') {
-    emit('touch', 'release', ...toTv({ x: event.clientX, y: event.clientY }))
+    emit('touch', 'release', ...toTv({ x: event.clientX, y: event.clientY }), event.timeStamp)
   }
   finish()
 }
@@ -119,12 +122,12 @@ const onUp = (event: PointerEvent) => {
 // The browser took the touch over (e.g. a system gesture): lift the finger, but it's no tap.
 const onCancel = (event: PointerEvent) => {
   if (event.pointerId !== pointerId) return
-  if (mode === 'drag') emit('touch', 'release', ...toTv(last))
+  if (mode === 'drag') emit('touch', 'release', ...toTv(last), lastTime)
   finish()
 }
 
 onBeforeUnmount(() => {
-  if (pointerId !== null && mode === 'drag') emit('touch', 'release', ...toTv(last))
+  if (pointerId !== null && mode === 'drag') emit('touch', 'release', ...toTv(last), lastTime)
   finish()
 })
 </script>

@@ -45,24 +45,25 @@ export const useTouchpad = (onError: (message: string) => void) => {
     return opened
   }
 
-  const send = (target: Socket, phase: TouchPhase, x: number, y: number) => {
-    const message = JSON.stringify({ phase, x, y })
+  // t is when, in ms on the page's clock; the Apple TV takes a swipe's speed from these times.
+  const send = (target: Socket, phase: TouchPhase, x: number, y: number, t: number) => {
+    const message = JSON.stringify({ phase, x, y, t })
     if (target.ws.readyState === WebSocket.CONNECTING) target.pending.push(message)
     else target.ws.send(message)
   }
 
-  const touch = (deviceId: string, phase: TouchPhase, x: number, y: number) => {
+  const touch = (deviceId: string, phase: TouchPhase, x: number, y: number, t: number) => {
     const current = socket
     if (current && current.deviceId === deviceId && current.ws.readyState <= WebSocket.OPEN) {
-      send(current, phase, x, y)
+      send(current, phase, x, y, t)
       return
     }
     close()
     if (phase === 'release') return // nothing left to lift
     const fresh = open(deviceId)
     socket = fresh
-    if (phase === 'move') send(fresh, 'press', x, y)
-    send(fresh, phase, x, y)
+    if (phase === 'move') send(fresh, 'press', x, y, t)
+    send(fresh, phase, x, y, t)
   }
 
   onBeforeUnmount(close)
