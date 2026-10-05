@@ -44,9 +44,13 @@ class RemoteController(
 
     private val repeating = RepeatingPress(scope) { sendNow(it) }
 
+    private var touchpad: Touchpad? = null
+    private var touchpadDeviceId: String? = null
+
     /** Switch servers (e.g. after the settings change) and reload. */
     fun useClient(client: IrisClient) {
         repeating.release()
+        closeTouchpad()
         this.client = client
         _state.update { it.copy(devices = emptyList(), env = null, error = null) }
         refresh()
@@ -60,10 +64,10 @@ class RemoteController(
         _state.update { it.copy(selectedId = id, error = null) }
     }
 
-    /** One press, e.g. OK or play/pause. */
-    fun send(command: String) {
+    /** One press, e.g. OK or play/pause. [action] is "hold" for a long press. */
+    fun send(command: String, action: String? = null) {
         if (!state.value.canControl) return
-        scope.launch { sendNow(command) }
+        scope.launch { sendNow(command, action) }
     }
 
     /** Start of a hold, e.g. an arrow or volume; repeats until [release]. */
@@ -72,6 +76,38 @@ class RemoteController(
     }
 
     fun release() = repeating.release()
+
+    /**
+     * One step of a finger on the touchpad; x and y run 0 to 1000. The touchpad connection
+     * opens on first use and stays open for the selected device.
+     */
+    fun touch(phase: TouchPhase, x: Int, y: Int) {
+        val device = state.value.selected?.takeIf { it.canControl } ?: return
+        // There's no reply to a touch, so a new drag clears the last error; a failure brings it back.
+        if (phase == TouchPhase.PRESS && state.value.error != null) _state.update { it.copy(error = null) }
+        if (touchpadDeviceId == device.id && touchpad?.send(phase, x, y) == true) return
+
+        // No connection for this device yet, or it dropped. A drag already under way picks up
+        // on the new one with a press; a lone release has nothing left to lift.
+        closeTouchpad()
+        if (phase == TouchPhase.RELEASE) return
+        val pad = try {
+            client.openTouchpad(device.id) { e -> _state.update { it.copy(error = e.message) } }
+        } catch (e: IrisException) {
+            _state.update { it.copy(error = e.message) }
+            return
+        }
+        touchpad = pad
+        touchpadDeviceId = device.id
+        if (phase == TouchPhase.MOVE) pad.send(TouchPhase.PRESS, x, y)
+        pad.send(phase, x, y)
+    }
+
+    fun closeTouchpad() {
+        touchpad?.close()
+        touchpad = null
+        touchpadDeviceId = null
+    }
 
     fun openPairing(deviceId: String) {
         _state.update { it.copy(pairing = PairingState(deviceId)) }
@@ -145,10 +181,10 @@ class RemoteController(
         }
     }
 
-    private suspend fun sendNow(command: String) {
+    private suspend fun sendNow(command: String, action: String? = null) {
         val device = state.value.selected ?: return
         try {
-            client.send(device.id, command)
+            client.send(device.id, command, action)
             if (state.value.error != null) _state.update { it.copy(error = null) }
         } catch (e: IrisException) {
             _state.update { it.copy(error = e.message) }

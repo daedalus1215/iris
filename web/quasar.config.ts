@@ -84,7 +84,7 @@ export default defineConfig((/* ctx */) => {
       open: true, // opens browser window automatically
       proxy: {
         // The backend (../backend) listens on 8080 by default
-        '/api': 'http://localhost:8080',
+        '/api': { target: 'http://localhost:8080', ws: true },
       },
     },
 

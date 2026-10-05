@@ -1,7 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 from pyatv import exceptions
-from pyatv.const import InputAction
+from pyatv.const import InputAction, TouchAction
+from starlette.testclient import WebSocketDenialResponse
 
 from iris_backend.api import create_app
 from iris_backend.devices import DeviceManager
@@ -130,12 +131,76 @@ def test_unreachable_apple_tv_is_503(client, fake):
     assert command(client, "left").status_code == 503
 
 
+def touch_url(device=DEVICE):
+    return f"/api/devices/{device}/touch"
+
+
+def test_touch_events_reach_pyatv_in_order(client, fake):
+    with client.websocket_connect(touch_url()) as ws:
+        ws.send_json({"phase": "press", "x": 300, "y": 500})
+        ws.send_json({"phase": "move", "x": 450, "y": 520})
+        ws.send_json({"phase": "release", "x": 700, "y": 500})
+
+    assert fake.calls == [
+        ("touch.action", (300, 500, TouchAction.Press)),
+        ("touch.action", (450, 520, TouchAction.Hold)),
+        ("touch.action", (700, 500, TouchAction.Release)),
+    ]
+    assert len(fake.connections) == 1
+
+
+@pytest.mark.parametrize(
+    "event",
+    [
+        {"phase": "spin", "x": 0, "y": 0},
+        {"phase": "press", "x": 1001, "y": 0},
+        {"phase": "press"},
+        "not json",
+    ],
+)
+def test_bad_touch_events_get_an_error_and_the_socket_stays_open(client, fake, event):
+    with client.websocket_connect(touch_url()) as ws:
+        if isinstance(event, str):
+            ws.send_text(event)
+        else:
+            ws.send_json(event)
+        assert ws.receive_json()["status"] == 400
+
+        ws.send_json({"phase": "press", "x": 0, "y": 0})
+        ws.send_json({"phase": "release", "x": 0, "y": 0})
+
+    assert [args[2] for _, args in fake.calls] == [TouchAction.Press, TouchAction.Release]
+
+
+def test_touch_on_an_unpaired_device_reports_409(client):
+    with client.websocket_connect(touch_url("UNPAIRED")) as ws:
+        ws.send_json({"phase": "press", "x": 500, "y": 500})
+        error = ws.receive_json()
+
+    assert error == {"detail": "'Den' isn't paired yet", "status": 409}
+
+
+def test_dropping_the_socket_mid_drag_lifts_the_finger(client, fake):
+    with client.websocket_connect(touch_url()) as ws:
+        ws.send_json({"phase": "press", "x": 500, "y": 500})
+        ws.send_json({"phase": "move", "x": 620, "y": 480})
+        ws.close()
+
+    assert fake.calls[-1] == ("touch.action", (620, 480, TouchAction.Release))
+
+
 def test_token_is_required_when_configured(fake, tmp_path):
     with make_client(fake, tmp_path, auth_token="s3cret") as client:
         assert client.get("/api/health").status_code == 200
         assert client.get("/api/devices").status_code == 401
         headers = {"Authorization": "Bearer s3cret"}
         assert client.get("/api/devices", headers=headers).status_code == 200
+
+        with pytest.raises(WebSocketDenialResponse) as denied:
+            client.websocket_connect(touch_url()).__enter__()
+        assert denied.value.status_code == 401
+        with client.websocket_connect(touch_url(), headers=headers) as ws:
+            ws.send_json({"phase": "press", "x": 500, "y": 500})
 
 
 def test_pairing_flow(client, fake):

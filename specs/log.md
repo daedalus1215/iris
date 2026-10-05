@@ -2,6 +2,29 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-04 (touchpad)
+
+**Done**
+- Touch spike: pyatv's touch gestures work on tvOS 26.6. Both TVs report Swipe, Action and Click as available. On Living Room, a streamed drag moved the scrub bar's marker during playback (the video only jumps on a click), so the Apple TV treats the events as a finger on its touchpad.
+- The touchpad (D18), on branch `touchpad`:
+  - Backend: the WebSocket `/api/devices/{id}/touch`, passed to pyatv's `touch.action`. 31 tests (7 new), ruff clean. Checked against the running server without touching a TV: bad events get errors back.
+  - Android: the touchpad fills the middle of the screen. A tap selects, a long press holds select, and the arrow buttons are a setting. The screen no longer scrolls, and the app is portrait only. Core: 39 tests (11 new). The app module only builds in CI (D10).
+  - Web: the same touchpad, with a switch for the arrow buttons. Driven in headless Chromium, emulating a phone, against a mock backend: a tap sends `select`, a drag streams a press, moves and a release, a long press sends `select` with `hold`, and the page doesn't scroll.
+  - nginx passes WebSocket upgrades through to the backend, and the dev server proxies them.
+  - CI: two runs failed on a flaky new core test. MockWebServer wouldn't shut down around a half-closed socket, about half the time on one CPU core. The test server now finishes the closing handshake: 0 failures in 30 single-core runs. CI also reports failed tests and compile errors as annotations, which show without signing in to GitHub.
+- The phone's volume buttons already control the TV in the app; I wrongly suggested that as new.
+
+- Shipped `36961ce` (branch `touchpad`) to dev with `./compose/ship.sh iris dev`. Both containers are healthy. The touch socket answers through nginx on `:8080` (the phones' path) and through Traefik on dev's bare IP; checked with bad events only, so no TV was touched. The home-lab change (`IRIS_TAG` in `dev.env`) isn't committed yet.
+
+**Next**
+- You: promote to prod2 with `./compose/ship.sh iris prod2`; my run was blocked by a permission check. Then commit the home-lab change, e.g. `deploy(iris): 36961ce to dev+prod2`.
+- You: install Iris Dev from the [android-dev pre-release](https://github.com/daedalus1215/iris/releases/tag/android-dev) (built from `36961ce`) and try the touchpad on both TVs. Dev still needs Bedroom paired.
+- Tune how far a swipe moves, if it feels slow or fast.
+- Open a PR for `touchpad` (needs `gh auth login`) and merge it with a merge commit, so the deployed `36961ce` stays a commit on `main`.
+
+**Blockers**
+- None.
+
 ## 2026-10-04 (direct port)
 
 **Done**
