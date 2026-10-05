@@ -93,14 +93,15 @@ class RemoteController(
     fun release() = repeating.release()
 
     /**
-     * One step of a finger on the touchpad; x and y run 0 to 1000. The touchpad connection
-     * opens on first use and stays open for the selected device.
+     * One step of a finger on the touchpad; x and y run 0 to 1000, and [t] is when (see
+     * [Touchpad.send]). The touchpad connection opens on first use and stays open for the
+     * selected device.
      */
-    fun touch(phase: TouchPhase, x: Int, y: Int) {
+    fun touch(phase: TouchPhase, x: Int, y: Int, t: Long) {
         val device = state.value.selected?.takeIf { it.canControl } ?: return
         // There's no reply to a touch, so a new drag clears the last error; a failure brings it back.
         if (phase == TouchPhase.PRESS && state.value.error != null) _state.update { it.copy(error = null) }
-        if (touchpadDeviceId == device.id && touchpad?.send(phase, x, y) == true) return
+        if (touchpadDeviceId == device.id && touchpad?.send(phase, x, y, t) == true) return
 
         // No connection for this device yet, or it dropped. A drag already under way picks up
         // on the new one with a press; a lone release has nothing left to lift.
@@ -114,8 +115,8 @@ class RemoteController(
         }
         touchpad = pad
         touchpadDeviceId = device.id
-        if (phase == TouchPhase.MOVE) pad.send(TouchPhase.PRESS, x, y)
-        pad.send(phase, x, y)
+        if (phase == TouchPhase.MOVE) pad.send(TouchPhase.PRESS, x, y, t)
+        pad.send(phase, x, y, t)
     }
 
     fun closeTouchpad() {
