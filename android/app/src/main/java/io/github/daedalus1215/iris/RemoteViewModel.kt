@@ -1,12 +1,16 @@
 package io.github.daedalus1215.iris
 
 import android.app.Application
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.daedalus1215.iris.core.HttpIrisClient
 import io.github.daedalus1215.iris.core.PairingProtocol
 import io.github.daedalus1215.iris.core.RemoteController
 import io.github.daedalus1215.iris.core.RemoteState
+import io.github.daedalus1215.iris.core.TouchPhase
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -23,6 +27,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     val state: StateFlow<RemoteState> = controller.state
     val serverUrl: String get() = settings.serverUrl
     val token: String get() = settings.token
+    var arrowButtons by mutableStateOf(settings.arrowButtons)
+        private set
 
     init {
         viewModelScope.launch {
@@ -37,11 +43,15 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun select(id: String) = controller.select(id)
 
-    fun send(command: String) = controller.send(command)
+    fun send(command: String, action: String? = null) = controller.send(command, action)
 
     fun press(command: String) = controller.press(command)
 
     fun release() = controller.release()
+
+    fun touch(phase: TouchPhase, x: Int, y: Int) = controller.touch(phase, x, y)
+
+    fun closeTouchpad() = controller.closeTouchpad()
 
     fun openPairing(deviceId: String) = controller.openPairing(deviceId)
 
@@ -51,9 +61,13 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun submitPin(pin: String) = controller.submitPin(pin)
 
-    fun saveSettings(serverUrl: String, token: String) {
+    fun saveSettings(serverUrl: String, token: String, arrowButtons: Boolean) {
         settings.serverUrl = serverUrl.trim()
         settings.token = token.trim()
+        settings.arrowButtons = arrowButtons
+        this.arrowButtons = arrowButtons
         controller.useClient(HttpIrisClient(settings.serverUrl, settings.token))
     }
+
+    override fun onCleared() = controller.closeTouchpad()
 }
