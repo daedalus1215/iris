@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from pyatv import exceptions
 from pyatv.const import InputAction, TouchAction
 from starlette.testclient import WebSocketDenialResponse
+from starlette.websockets import WebSocketDisconnect
 
 from iris_backend.api import create_app
 from iris_backend.devices import DeviceManager
@@ -187,6 +188,73 @@ def test_dropping_the_socket_mid_drag_lifts_the_finger(client, fake):
         ws.close()
 
     assert fake.calls[-1] == ("touch.action", (620, 480, TouchAction.Release))
+
+
+def keyboard_url(device=DEVICE):
+    return f"/api/devices/{device}/keyboard"
+
+
+def test_keyboard_reports_focus_and_text_as_they_change(client, fake):
+    with client.websocket_connect(keyboard_url()) as ws:
+        assert ws.receive_json() == {"focused": False, "text": None}
+
+        client.portal.call(fake.keyboard.focus, "star")
+        assert ws.receive_json() == {"focused": True, "text": "star"}
+
+        client.portal.call(fake.keyboard.unfocus)
+        assert ws.receive_json() == {"focused": False, "text": None}
+
+
+def test_typed_text_replaces_the_focused_field(client, fake):
+    fake.keyboard.text = "sta"
+    with client.websocket_connect(keyboard_url()) as ws:
+        assert ws.receive_json() == {"focused": True, "text": "sta"}
+        ws.send_json({"text": "star wars"})
+
+    assert fake.calls == [("keyboard.text_set", ("star wars",))]
+    assert fake.keyboard.text == "star wars"
+
+
+@pytest.mark.parametrize("message", [{"txt": "hi"}, {"text": "x" * 1001}, "not json"])
+def test_bad_keyboard_messages_get_an_error_and_the_socket_stays_open(client, fake, message):
+    fake.keyboard.text = ""
+    with client.websocket_connect(keyboard_url()) as ws:
+        ws.receive_json()
+        if isinstance(message, str):
+            ws.send_text(message)
+        else:
+            ws.send_json(message)
+        assert ws.receive_json()["status"] == 400
+
+        ws.send_json({"text": "ok"})
+
+    assert fake.calls == [("keyboard.text_set", ("ok",))]
+
+
+def test_keyboard_on_an_unpaired_device_reports_409_and_closes(client):
+    with client.websocket_connect(keyboard_url("UNPAIRED")) as ws:
+        assert ws.receive_json() == {"detail": "'Den' isn't paired yet", "status": 409}
+        with pytest.raises(WebSocketDisconnect) as closed:
+            ws.receive_json()
+
+    assert closed.value.code == 1011
+
+
+def test_keyboard_socket_closes_when_the_apple_tv_connection_is_lost(client, fake):
+    with client.websocket_connect(keyboard_url()) as ws:
+        ws.receive_json()
+        listener = fake.connections[0].listener
+        client.portal.call(listener.connection_lost, Exception("tv restarted"))
+        with pytest.raises(WebSocketDisconnect) as closed:
+            ws.receive_json()
+
+    assert closed.value.code == 1011
+    # Opening it again reconnects and watches the new connection.
+    with client.websocket_connect(keyboard_url()) as ws:
+        assert ws.receive_json() == {"focused": False, "text": None}
+        client.portal.call(fake.keyboard.focus, "")
+        assert ws.receive_json() == {"focused": True, "text": ""}
+    assert len(fake.connections) == 2
 
 
 def test_token_is_required_when_configured(fake, tmp_path):

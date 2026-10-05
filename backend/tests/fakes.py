@@ -4,7 +4,7 @@ import weakref
 from types import SimpleNamespace
 
 from pyatv import exceptions
-from pyatv.const import OperatingSystem, Protocol
+from pyatv.const import KeyboardFocusState, OperatingSystem, Protocol
 
 GOOD_PIN = "1234"
 
@@ -51,10 +51,49 @@ class FakeInterface:
         return call
 
 
+class FakeKeyboard:
+    """The Apple TV's text field, kept across connections like the real one."""
+
+    def __init__(self, calls: list) -> None:
+        self._calls = calls
+        self._listener = None
+        self.text: str | None = None  # None while no text field has focus
+
+    @property
+    def listener(self):
+        return self._listener() if self._listener else None
+
+    @listener.setter
+    def listener(self, value) -> None:
+        self._listener = weakref.ref(value) if value is not None else None
+
+    @property
+    def text_focus_state(self) -> KeyboardFocusState:
+        return KeyboardFocusState.Unfocused if self.text is None else KeyboardFocusState.Focused
+
+    async def text_get(self) -> str | None:
+        return self.text
+
+    async def text_set(self, text: str) -> None:
+        self._calls.append(("keyboard.text_set", (text,)))
+        if self.text is not None:
+            self.text = text
+
+    # What the TV does when a text field opens or closes. Call these on the event loop.
+    def focus(self, text: str = "") -> None:
+        self.text = text
+        self.listener.focusstate_update(KeyboardFocusState.Unfocused, KeyboardFocusState.Focused)
+
+    def unfocus(self) -> None:
+        self.text = None
+        self.listener.focusstate_update(KeyboardFocusState.Focused, KeyboardFocusState.Unfocused)
+
+
 class FakeAppleTV:
-    def __init__(self, calls: list, fail: dict) -> None:
+    def __init__(self, calls: list, fail: dict, keyboard: FakeKeyboard) -> None:
         self._listener = None
         self.closed = False
+        self.keyboard = keyboard
         self.remote_control = FakeInterface("remote_control", calls, fail)
         self.audio = FakeInterface("audio", calls, fail)
         self.power = FakeInterface("power", calls, fail)
@@ -121,6 +160,7 @@ class FakeClient:
         self.handlers: list[FakePairingHandler] = []
         self.scans = 0
         self.storage_obj = FakeStorage()
+        self.keyboard = FakeKeyboard(self.calls)
 
     def storage(self, path: str) -> FakeStorage:
         return self.storage_obj
@@ -130,7 +170,7 @@ class FakeClient:
         return list(self.configs)
 
     async def connect(self, config, storage) -> FakeAppleTV:
-        atv = FakeAppleTV(self.calls, self.fail)
+        atv = FakeAppleTV(self.calls, self.fail, self.keyboard)
         self.connections.append(atv)
         return atv
 
