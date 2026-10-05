@@ -6,8 +6,10 @@ import ScanButton from 'src/components/ScanButton/ScanButton.vue'
 import GlowButton from 'src/components/GlowButton/GlowButton.vue'
 import PairingDialog from 'src/components/PairingDialog/PairingDialog.vue'
 import TouchPad from 'src/components/TouchPad/TouchPad.vue'
+import KeyboardDialog from 'src/components/KeyboardDialog/KeyboardDialog.vue'
 import { useRepeatingCommand } from 'src/composables/useRepeatingCommand'
 import { useTouchpad } from 'src/composables/useTouchpad'
+import { useKeyboard } from 'src/composables/useKeyboard'
 import type { TouchPhase } from 'src/api'
 
 const SELECTED_KEY = 'iris.selectedDevice'
@@ -69,6 +71,23 @@ const send = async (command: string, action?: string) => {
 
 const { getButtonEvents } = useRepeatingCommand(send)
 
+// Watch the selected Apple TV's text field once it can be controlled.
+const keyboardDevice = computed(() => (ready.value && selected.value ? selected.value.id : null))
+const { state: keyboardState, type: typeOnTv } = useKeyboard(
+  keyboardDevice,
+  (message) => (error.value = message),
+)
+const keyboardFocused = computed(() => keyboardState.value?.focused === true)
+// Closing the dialog keeps it closed until the TV's text field loses focus.
+const keyboardDismissed = ref(false)
+watch(keyboardFocused, (focused) => {
+  if (!focused) keyboardDismissed.value = false
+})
+const keyboardOpen = computed({
+  get: () => keyboardFocused.value && !keyboardDismissed.value,
+  set: (open: boolean) => (keyboardDismissed.value = !open),
+})
+
 const touchpad = useTouchpad((message) => (error.value = message))
 watch(selectedId, touchpad.close)
 
@@ -122,6 +141,16 @@ onMounted(async () => {
             :label="ready ? 'Finish pairing' : 'Pair this Apple TV'"
             class="q-mt-sm"
             @click="pairingOpen = true"
+          />
+          <q-btn
+            v-if="keyboardFocused && keyboardDismissed"
+            flat
+            dense
+            no-caps
+            icon="keyboard"
+            label="Type on the TV"
+            class="q-mt-sm"
+            @click="keyboardDismissed = false"
           />
           <div v-if="error" class="text-negative q-mt-sm error-text">{{ error }}</div>
         </q-card-section>
@@ -239,6 +268,14 @@ onMounted(async () => {
         dark
         dense
         class="q-mt-md text-grey-5"
+      />
+
+      <KeyboardDialog
+        v-if="selected"
+        v-model="keyboardOpen"
+        :device-name="selected.name"
+        :initial-text="keyboardState?.text ?? ''"
+        @type="typeOnTv"
       />
 
       <PairingDialog
