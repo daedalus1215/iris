@@ -2,6 +2,24 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-05 (keyboard)
+
+**Done**
+- You merged the touchpad PR (#6, from `touchpad-a`) and pulled `main`. Dev runs `36961ce`, which isn't on `main` by ID, but `main`'s `b56ea5e` has identical content.
+- Typing with the phone's keyboard (D19), on branch `keyboard`, one commit per step:
+  - Backend: a fix first. pyatv holds listeners weakly, and the connection-lost listener was being collected at once, so lost connections went unnoticed until a command retried. The test fake now holds listeners weakly too, which reproduced it.
+  - Backend: the keyboard WebSocket. 38 tests (7 new), ruff clean, and no failures in 20 single-core runs. Checked against both real TVs without typing anything: the socket connects to pyatv's keyboard and reports no text field open.
+  - Android: the keyboard client and the controller in core, with 10 new tests (49 in total). The dialog, a header button and a keyboard icon (Material Symbols, like the others) are in the app.
+  - Web: the keyboard helper and the dialog. Driven in headless Chromium against a mock backend: the dialog opens when the TV focuses a field, starts from its text, sends each change, and closing it leaves a "Type on the TV" button until the field loses focus.
+
+**Next**
+- Push `keyboard`, so CI builds the APK (the app module only builds there, D10).
+- You: try a search on each TV, from the app and the web remote. The real TVs' focus events haven't been seen yet; only the starting state has.
+- Merge with a merge commit, then ship to dev and prod2.
+
+**Blockers**
+- None.
+
 ## 2026-10-04 (touchpad)
 
 **Done**

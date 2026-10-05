@@ -49,6 +49,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 | `POST /api/devices/{id}/pairing/{protocol}` | — | `{session}`. The PIN appears on the TV. `protocol` is `companion` or `airplay`. |
 | `POST /api/devices/{id}/pairing/{protocol}/pin` | `{session, pin}` | `{paired: true}` |
 | `POST /api/devices/{id}/commands/{command}` | `{action?: "tap" \| "double_tap" \| "hold"}` | `204` |
+| `WS /api/devices/{id}/keyboard` | `{text}` replaces what's typed in the focused text field (D19) | `{focused, text}` on connect and whenever a text field gains or loses focus; errors as `{detail, status}`. Closes when the connection to the Apple TV is lost. |
 | `WS /api/devices/{id}/touch` | A stream of `{phase: "press" \| "move" \| "release", x, y}`, with x and y from 0 to 1000 (D18) | Only errors, as `{detail, status}`; the socket stays open |
 
 **Commands** (an allowlist; anything else gets a 400): `up`, `down`, `left`, `right`, `select`, `menu`, `home`, `play_pause`, `play`, `pause`, `next`, `previous`, `skip_forward`, `skip_backward`, `volume_up`, `volume_down`, `turn_on`, `turn_off`. Whether volume works depends on the TV's HDMI setup; the spike will tell.
@@ -134,6 +135,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 - [x] Home button and d-pad layout fix; play and pause merged into one button; volume buttons added
 - [x] Environment badge. Pairing state is shown; live connection state isn't yet.
 - [x] Touchpad (D18), with a switch to bring back the arrow buttons
+- [x] Typing with the phone's keyboard (D19): a dialog opens when a text field on the TV gets focus
 
 ### Run and verify
 
