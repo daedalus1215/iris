@@ -6,6 +6,7 @@ import mockwebserver3.MockWebServer
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
@@ -14,6 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.test.assertNull
 
 class HttpIrisClientTest {
@@ -163,6 +165,7 @@ class HttpIrisClientTest {
     /** A server end of the touchpad socket that records what arrives and can talk back. */
     private class TouchServer(private val greeting: String? = null) : WebSocketListener() {
         val received = LinkedBlockingQueue<String>()
+        val closed = CountDownLatch(1)
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
             greeting?.let { webSocket.send(it) }
@@ -171,6 +174,20 @@ class HttpIrisClientTest {
         override fun onMessage(webSocket: WebSocket, text: String) {
             received += text
         }
+
+        // Finish the closing handshake: MockWebServer won't shut down around a half-closed socket.
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            webSocket.close(code, null)
+        }
+
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            closed.countDown()
+        }
+    }
+
+    private fun Touchpad.closeAndWait(server: TouchServer) {
+        close()
+        assertTrue(server.closed.await(5, TimeUnit.SECONDS), "the touchpad socket didn't close")
     }
 
     private fun <T> LinkedBlockingQueue<T>.next(): T? = poll(5, TimeUnit.SECONDS)
@@ -191,7 +208,7 @@ class HttpIrisClientTest {
         val request = server.takeRequest()
         assertEquals(listOf("api", "devices", "AA:BB:CC:00:00:01", "touch"), request.url.pathSegments)
         assertEquals("Bearer s3cret", request.headers["Authorization"])
-        pad.close()
+        pad.closeAndWait(touchServer)
         assertFalse(pad.send(TouchPhase.PRESS, 0, 0))
     }
 
@@ -201,9 +218,10 @@ class HttpIrisClientTest {
         server.enqueue(MockResponse.Builder().webSocketUpgrade(touchServer).build())
         val errors = LinkedBlockingQueue<IrisException>()
 
-        client().openTouchpad("DEN") { errors += it }
+        val pad = client().openTouchpad("DEN") { errors += it }
 
         assertEquals("'Den' isn't paired yet", errors.next()?.message)
+        pad.closeAndWait(touchServer)
     }
 
     @Test
