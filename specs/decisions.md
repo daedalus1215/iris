@@ -168,7 +168,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - Touch events share the per-device lock and reconnect logic with commands. If the socket drops mid-drag, the backend lifts the finger.
   - The server only sends errors back, as `{detail, status}`, and keeps the socket open. The next touch reopens a dropped socket.
   - The Android screen no longer scrolls, so the app is portrait only.
-- **Known limit:** pyatv timestamps each event when the backend sends it, not when the finger moved, so Wi-Fi jitter could make flicks uneven. If that shows up, send the phone's timestamps through, which needs pyatv's lower-level API.
+- **Known limit (fixed in D20):** pyatv timestamps each event when the backend sends it, not when the finger moved, so Wi-Fi jitter could make flicks uneven. If that shows up, send the phone's timestamps through, which needs pyatv's lower-level API.
 
 ### D19: Type on the TV with the phone's keyboard, opened by the TV
 
@@ -188,3 +188,18 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - The socket closes when the backend loses the connection to the Apple TV. Clients reopen it after 1 s, doubling the wait up to 30 s, until a state arrives.
   - Errors before the first state aren't shown, since they're about watching itself and the retry covers them.
   - pyatv holds listeners weakly, so the backend keeps each connection's listener alive itself. Before this, the connection-lost listener was collected straight away, and a lost connection only came to light on the next command's retry.
+
+### D20: Swipes keep the finger's timing, and ignore the slide back at lift-off
+
+- **Date:** 2026-10-05
+- **Status:** Accepted
+- **Problem:** swipes felt slightly janky, and a swipe right sometimes ended by snapping left. This was D18's known limit showing up.
+  - The Apple TV takes a swipe's speed from each touch event's time, and pyatv stamped events as they left the backend.
+  - Phone Wi-Fi often delivers several events at once, so their times bunched together.
+  - A finger also often slides back a few pixels as it lifts. Squeezed into a tiny time gap, that slide read as a fast flick the other way.
+- **Decision:**
+  - Touch events carry `t`, the finger's time in ms on the client's clock: pointer uptime on Android, `event.timeStamp` on the web. It's optional, so older apps still work.
+  - The backend puts each drag's press at the Companion session's present, and keeps the client's spacing for the rest. Times never go backwards.
+  - pyatv has no public way to pass a time, so the backend sends the Companion `_hidT` event itself, through pyatv internals. A test fails if a pyatv upgrade changes them.
+  - On release, if the unsent tail of the drag points back against it, the release goes where the drag last was, at the lift's time. A tail that keeps going is kept, so flicks keep their speed.
+- **Why not hold events back on the server to re-space them:** that adds latency to every swipe. Passing the time is what the protocol's own time field is for.

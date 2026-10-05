@@ -2,6 +2,23 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-05 (smoother swipes)
+
+**Done**
+- You reported swipes as slightly janky, with a swipe right sometimes snapping back left. The cause was D18's known limit: touch times taken on arrival, plus the finger sliding back as it lifts (D20).
+- On branch `smooth-swipes`, one commit per change:
+  - Backend: touch events take the finger's time `t`, and the backend sends pyatv's Companion touch event with that time. 41 tests (3 new, including one that checks the pyatv internals); no failures in 10 single-core runs.
+  - Android and web send each touch's own time.
+  - Android and web ignore a backward slide at lift-off. Checked on the web in headless Chromium against the mock backend: a swipe right whose finger slid 6 px back as it lifted released where the drag last was, and one that pushed on kept the extra.
+- This branch also carries the `log-keyboard-shipped` commit, so that PR can be closed.
+
+**Next**
+- Merge, then ship to dev and prod2. The timing fix needs the new backend; the lift-off fix is in the apps alone.
+- You: install the new APK and try swiping on the TV. If it's still not smooth, look at how far a swipe moves next.
+
+**Blockers**
+- None.
+
 ## 2026-10-05 (keyboard shipped)
 
 **Done**
