@@ -1,5 +1,6 @@
 """Stand-ins for pyatv objects, so tests run without a network or an Apple TV."""
 
+import weakref
 from types import SimpleNamespace
 
 from pyatv import exceptions
@@ -52,12 +53,21 @@ class FakeInterface:
 
 class FakeAppleTV:
     def __init__(self, calls: list, fail: dict) -> None:
-        self.listener = None
+        self._listener = None
         self.closed = False
         self.remote_control = FakeInterface("remote_control", calls, fail)
         self.audio = FakeInterface("audio", calls, fail)
         self.power = FakeInterface("power", calls, fail)
         self.touch = FakeInterface("touch", calls, fail)
+
+    # Held weakly, like pyatv: whoever sets a listener has to keep it alive.
+    @property
+    def listener(self):
+        return self._listener() if self._listener else None
+
+    @listener.setter
+    def listener(self, value) -> None:
+        self._listener = weakref.ref(value) if value is not None else None
 
     def close(self) -> set:
         self.closed = True
