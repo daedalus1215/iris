@@ -1,6 +1,6 @@
 # M2: Home-lab deploy (dev + prod)
 
-**Status:** In progress: dev and prod live (`c68517c`) and reachable from the phone; prod needs pairing
+**Status:** In progress: dev and prod live (`2651f83`) and reachable from the phone; prod is paired with both Apple TVs, dev only with Living Room
 **Depends on:** M1 backend
 **Outcome:** Iris runs on the home lab's Docker hosts as a dev and a prod environment, at `iris.dev.lan` and `iris.lan`. It's deployed the same way as the lab's other apps.
 
@@ -63,11 +63,11 @@ Phones can't resolve `.lan` names, and the router is staying as it is. So the `w
 - [x] Dev reachable from the phone without DNS: Iris holds dev's bare-IP slot in `dev.env`
 - [ ] Pair dev with both Apple TVs. Living Room is done (both protocols, from the app); Bedroom isn't yet.
 - [x] Merged into `main` (PR #2), rebuilt dev from `main` (`07fd521`), promoted to prod2. Both run the same image digest.
-- [ ] Pair prod with both Apple TVs (one Companion PIN each, from the app once the phone can reach `iris.lan`)
+- [x] Pair prod with both Apple TVs (one Companion PIN each). Both report paired over Companion and AirPlay (checked 2026-10-05).
 - [x] Phones reach Iris without `.lan` names: port 8080 on each host (D17). Verified on dev.
 - [x] Promoted to prod2 (`c68517c`, merged in PR #3 with its commit IDs intact, so no rebuild). Prod answers on `:8080`.
 - [ ] DHCP reservations for both Apple TVs (MACs in the home-lab INVENTORY)
-- [ ] Point the Iris (prod) app at `http://<prod-host-ip>:8080`, then pair both Apple TVs
+- [x] Point the Iris (prod) app at `http://<prod-host-ip>:8080`, then pair both Apple TVs
 
 ## Acceptance criteria
 
