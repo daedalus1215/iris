@@ -38,6 +38,13 @@ interface IrisClient {
      */
     fun openTouchpad(deviceId: String, onError: (IrisException) -> Unit): Touchpad
 
+    /**
+     * Watches the device's text field, and types into it through the returned [Keyboard].
+     * [watcher]'s callbacks come on a background thread. Throws [IrisException] straight away
+     * if the server address isn't valid.
+     */
+    fun openKeyboard(deviceId: String, watcher: KeyboardWatcher): Keyboard
+
     /** Starts pairing; the Apple TV shows a PIN. Returns the session to finish it with. */
     suspend fun startPairing(deviceId: String, protocol: PairingProtocol): String
 
@@ -48,6 +55,24 @@ interface IrisClient {
 interface Touchpad {
     /** Queues one step of a finger; x and y run 0 to 1000. False once closed: open a new one. */
     fun send(phase: TouchPhase, x: Int, y: Int): Boolean
+
+    fun close()
+}
+
+interface KeyboardWatcher {
+    /** The text field's state: first when the connection opens, then whenever focus moves. */
+    fun onState(state: KeyboardState)
+
+    fun onError(error: IrisException)
+
+    /** The connection closed by itself, e.g. the server lost the Apple TV. Open a new one. */
+    fun onClosed()
+}
+
+/** An open keyboard connection to one Apple TV. */
+interface Keyboard {
+    /** Replaces what's typed in the focused text field. False once closed: open a new one. */
+    fun setText(text: String): Boolean
 
     fun close()
 }
@@ -79,6 +104,9 @@ class HttpIrisClient(
 
     override fun openTouchpad(deviceId: String, onError: (IrisException) -> Unit): Touchpad =
         WebSocketTouchpad(http, authorized(url(arrayOf("devices", deviceId, "touch"))), displayUrl, onError)
+
+    override fun openKeyboard(deviceId: String, watcher: KeyboardWatcher): Keyboard =
+        WebSocketKeyboard(http, authorized(url(arrayOf("devices", deviceId, "keyboard"))), displayUrl, watcher)
 
     override suspend fun startPairing(deviceId: String, protocol: PairingProtocol): String =
         decode<PairingStarted>(execute("POST", "devices", deviceId, "pairing", protocol.apiName)).session
@@ -160,6 +188,14 @@ class HttpIrisClient(
                 null
             }
 
+        /** Why a WebSocket didn't open: no server, or the server said no. */
+        private fun openFailure(what: String, displayUrl: String, response: Response?, t: Throwable) =
+            when (val code = response?.code) {
+                null -> IrisException("Can't reach the Iris server at $displayUrl", cause = t)
+                401 -> IrisException("missing or wrong token", code)
+                else -> IrisException("The server refused the $what ($code)", code)
+            }
+
         val defaultHttpClient: OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(3, TimeUnit.SECONDS)
             // Scanning for Apple TVs takes the server about 5 seconds.
@@ -202,14 +238,7 @@ class HttpIrisClient(
                 override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                     closed = true
                     if (opened || closedHere) return
-                    val code = response?.code
-                    onError(
-                        when (code) {
-                            null -> IrisException("Can't reach the Iris server at $displayUrl", cause = t)
-                            401 -> IrisException("missing or wrong token", code)
-                            else -> IrisException("The server refused the touchpad ($code)", code)
-                        },
-                    )
+                    onError(openFailure("touchpad", displayUrl, response, t))
                 }
             },
         )
@@ -223,7 +252,74 @@ class HttpIrisClient(
             socket.close(NORMAL_CLOSURE, null)
         }
     }
+
+    /**
+     * The keyboard over a WebSocket. The server sends the text field's state, and errors as
+     * {"detail": ...}; [setText] sends {"text": ...}. OkHttp queues sends until the socket opens.
+     */
+    private class WebSocketKeyboard(
+        http: OkHttpClient,
+        request: Request,
+        private val displayUrl: String,
+        private val watcher: KeyboardWatcher,
+    ) : Keyboard {
+        @Volatile private var closed = false
+        @Volatile private var opened = false
+        @Volatile private var closedHere = false
+
+        private val socket = http.newWebSocket(
+            request,
+            object : WebSocketListener() {
+                override fun onOpen(webSocket: WebSocket, response: Response) {
+                    opened = true
+                }
+
+                override fun onMessage(webSocket: WebSocket, text: String) {
+                    val detail = errorDetail(text)
+                    if (detail != null) {
+                        watcher.onError(IrisException(detail))
+                        return
+                    }
+                    try {
+                        watcher.onState(json.decodeFromString<KeyboardState>(text))
+                    } catch (e: SerializationException) {
+                        watcher.onError(IrisException("Unexpected keyboard message from the Iris server", cause = e))
+                    } catch (e: IllegalArgumentException) {
+                        watcher.onError(IrisException("Unexpected keyboard message from the Iris server", cause = e))
+                    }
+                }
+
+                override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+                    closed = true
+                    webSocket.close(NORMAL_CLOSURE, null)
+                }
+
+                override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                    if (!closedHere) watcher.onClosed()
+                }
+
+                override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    closed = true
+                    if (closedHere) return
+                    if (!opened) watcher.onError(openFailure("keyboard", displayUrl, response, t))
+                    watcher.onClosed()
+                }
+            },
+        )
+
+        override fun setText(text: String): Boolean =
+            !closed && socket.send(json.encodeToString(KeyboardText(text)))
+
+        override fun close() {
+            closedHere = true
+            closed = true
+            socket.close(NORMAL_CLOSURE, null)
+        }
+    }
 }
+
+@Serializable
+private data class KeyboardText(val text: String)
 
 @Serializable
 private data class CommandBody(val action: String)

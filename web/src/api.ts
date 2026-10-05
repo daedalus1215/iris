@@ -32,12 +32,24 @@ export const sendCommand = async (id: string, command: string, action?: string) 
 // A finger on the Siri Remote's touch surface: down, moving, up.
 export type TouchPhase = 'press' | 'move' | 'release'
 
-// The device's touchpad: a WebSocket on the same origin, carrying {phase, x, y} in order.
-export const touchpadUrl = (id: string) => {
-  const url = new URL(`/api${devicePath(id)}/touch`, window.location.href)
+// A WebSocket on the same origin as the page.
+const socketUrl = (path: string) => {
+  const url = new URL(`/api${path}`, window.location.href)
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   return url.toString()
 }
+
+// The device's touchpad: carries {phase, x, y} in order.
+export const touchpadUrl = (id: string) => socketUrl(`${devicePath(id)}/touch`)
+
+// The Apple TV's text field: whether one has focus, and what's typed in it.
+export interface KeyboardState {
+  focused: boolean
+  text: string | null
+}
+
+// The device's keyboard: the server sends KeyboardState (or {detail} errors); send {text}.
+export const keyboardUrl = (id: string) => socketUrl(`${devicePath(id)}/keyboard`)
 
 export const startPairing = async (id: string, protocol: PairingProtocol) =>
   (await api.post<{ session: string }>(`${devicePath(id)}/pairing/${protocol}`)).data.session

@@ -61,6 +61,8 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 - [x] Try it on the phone: Iris Dev against the dev server. Paired Living Room over both protocols from the app, then controlled it (2026-10-04).
 - [x] Touchpad (D18): a drag streams touches, a tap selects, and a long press holds select. The arrow buttons are a setting. The screen no longer scrolls, and the app is portrait only. Core: 11 new tests, 39 in total.
 - [ ] Try the touchpad on the phone, and tune how far a swipe moves
+- [x] Typing with the phone's keyboard (D19): the app watches the TV's text field while it's open, and a dialog opens when one gets focus. Core: 10 new tests, 49 in total.
+- [ ] Try typing on the phone: a search on each TV
 
 ### Release
 
@@ -78,4 +80,4 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 ## Later, or out of scope
 
 - Standalone mode, where the phone talks to the Apple TV directly with no backend (see D4).
-- A quick-settings tile, a home-screen widget, and keyboard text entry (pyatv has a keyboard interface).
+- A quick-settings tile and a home-screen widget.
