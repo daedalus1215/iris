@@ -2,6 +2,25 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-04 (touchpad)
+
+**Done**
+- Touch spike: pyatv's touch gestures work on tvOS 26.6. Both TVs report Swipe, Action and Click as available. On Living Room, a streamed drag moved the scrub bar's marker during playback (the video only jumps on a click), so the Apple TV treats the events as a finger on its touchpad.
+- The touchpad (D18), on branch `touchpad`:
+  - Backend: the WebSocket `/api/devices/{id}/touch`, passed to pyatv's `touch.action`. 31 tests (7 new), ruff clean. Checked against the running server without touching a TV: bad events get errors back.
+  - Android: the touchpad fills the middle of the screen. A tap selects, a long press holds select, and the arrow buttons are a setting. The screen no longer scrolls, and the app is portrait only. Core: 39 tests (11 new). The app module only builds in CI (D10).
+  - Web: the same touchpad, with a switch for the arrow buttons. Driven in headless Chromium, emulating a phone, against a mock backend: a tap sends `select`, a drag streams a press, moves and a release, a long press sends `select` with `hold`, and the page doesn't scroll.
+  - nginx passes WebSocket upgrades through to the backend, and the dev server proxies them.
+- The phone's volume buttons already control the TV in the app; I wrongly suggested that as new.
+
+**Next**
+- You: install Iris Dev from the [android-dev pre-release](https://github.com/daedalus1215/iris/releases/tag/android-dev) once CI has built `touchpad`. Point it at `http://<laptop-ip>:8080` in Settings, and try the touchpad on both TVs. The web remote at the same address has it too. The backend runs from `make run` and stops with the session.
+- Tune how far a swipe moves, if it feels slow or fast.
+- Open a PR for `touchpad` (needs `gh auth login`), merge, and ship to dev, then prod.
+
+**Blockers**
+- None.
+
 ## 2026-10-04 (direct port)
 
 **Done**
