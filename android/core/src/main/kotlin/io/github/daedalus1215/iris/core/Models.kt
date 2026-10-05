@@ -42,3 +42,7 @@ enum class TouchPhase(val apiName: String) {
     MOVE("move"),
     RELEASE("release"),
 }
+
+/** The Apple TV's text field: whether one has focus, and what's typed in it. */
+@Serializable
+data class KeyboardState(val focused: Boolean, val text: String? = null)
