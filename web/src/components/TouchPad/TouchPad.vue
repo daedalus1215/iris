@@ -74,6 +74,32 @@ const toTv = (point: Point) => {
   return [scale(point.x - rect.left, rect.width), scale(point.y - rect.top, rect.height)] as const
 }
 
+// Keeps a swipe on the axis it set out along. A thumb sweeps in an arc, so a swipe that starts
+// out left drifts down as it goes, and the Apple TV reads the drift as a move down. A swipe that
+// starts within RAIL_MAX_DEGREES of an axis stays exactly on it; a more diagonal one stays free.
+const RAIL_MAX_DEGREES = 30
+let rail: { axis: 'horizontal' | 'vertical' | null; pressTv: readonly [number, number] } = {
+  axis: null,
+  pressTv: [0, 0],
+}
+
+// Set at the press, from how the finger moved on screen to get there (touchpad units are
+// stretched to the pad's shape, so the angle comes from screen distances).
+const startRail = (moved: Point, pressTv: readonly [number, number]) => {
+  const angle = (Math.atan2(Math.abs(moved.y), Math.abs(moved.x)) * 180) / Math.PI
+  const axis =
+    angle <= RAIL_MAX_DEGREES ? 'horizontal' : angle >= 90 - RAIL_MAX_DEGREES ? 'vertical' : null
+  rail = { axis, pressTv }
+}
+
+// Where on the TV's touchpad to send a point, kept to the swipe's rail.
+const onRail = (point: Point) => {
+  const [x, y] = toTv(point)
+  if (rail.axis === 'horizontal') return [x, rail.pressTv[1]] as const
+  if (rail.axis === 'vertical') return [rail.pressTv[0], y] as const
+  return [x, y] as const
+}
+
 const follow = (event: PointerEvent) => {
   last = { x: event.clientX, y: event.clientY }
   lastTime = event.timeStamp
@@ -108,11 +134,13 @@ const onMove = (event: PointerEvent) => {
     if (Math.hypot(last.x - start.x, last.y - start.y) <= SLOP_PX) return
     window.clearTimeout(longPressTimer)
     mode = 'drag'
-    emit('touch', 'press', ...toTv(last), lastTime)
+    const pressTv = toTv(last)
+    startRail({ x: last.x - start.x, y: last.y - start.y }, pressTv)
+    emit('touch', 'press', ...pressTv, lastTime)
     pressedAt = sentAt = last
     lastSent = event.timeStamp
   } else if (event.timeStamp - lastSent >= TOUCH_INTERVAL_MS) {
-    emit('touch', 'move', ...toTv(last), lastTime)
+    emit('touch', 'move', ...onRail(last), lastTime)
     sentAt = last
     lastSent = event.timeStamp
   }
@@ -134,7 +162,7 @@ const onUp = (event: PointerEvent) => {
     emit('tap')
   } else if (mode === 'drag') {
     const lifted = liftOff({ x: event.clientX, y: event.clientY })
-    emit('touch', 'release', ...toTv(lifted), event.timeStamp)
+    emit('touch', 'release', ...onRail(lifted), event.timeStamp)
   }
   finish()
 }
@@ -142,12 +170,12 @@ const onUp = (event: PointerEvent) => {
 // The browser took the touch over (e.g. a system gesture): lift the finger, but it's no tap.
 const onCancel = (event: PointerEvent) => {
   if (event.pointerId !== pointerId) return
-  if (mode === 'drag') emit('touch', 'release', ...toTv(liftOff(last)), lastTime)
+  if (mode === 'drag') emit('touch', 'release', ...onRail(liftOff(last)), lastTime)
   finish()
 }
 
 onBeforeUnmount(() => {
-  if (pointerId !== null && mode === 'drag') emit('touch', 'release', ...toTv(last), lastTime)
+  if (pointerId !== null && mode === 'drag') emit('touch', 'release', ...onRail(last), lastTime)
   finish()
 })
 </script>
