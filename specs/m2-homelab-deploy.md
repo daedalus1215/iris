@@ -1,6 +1,6 @@
 # M2: Home-lab deploy (dev + prod)
 
-**Status:** In progress: dev and prod live (`2651f83`) and reachable from the phone; prod is paired with both Apple TVs, dev only with Living Room
+**Status:** In progress: dev and prod live (`fc51edc`) and reachable from the phone; prod is paired with both Apple TVs, dev only with Living Room
 **Depends on:** M1 backend
 **Outcome:** Iris runs on the home lab's Docker hosts as a dev and a prod environment, at `iris.dev.lan` and `iris.lan`. It's deployed the same way as the lab's other apps.
 

@@ -2,6 +2,26 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-05 (swipes shipped)
+
+**Done**
+- You merged the swipe PR (#8). `main` (`fc51edc`) has the same content as the tested `smooth-swipes` (`d3d3001`).
+- Shipped `fc51edc` to dev, then promoted the same image to prod2. Both are healthy.
+- Checked both through `:8080` without touching anything on screen: health, devices, the keyboard socket, and an invalid touch (400).
+  - Prod: Bedroom and Living Room are both paired.
+  - Dev: Living Room only, reached on its new Companion port.
+- Home-lab commit `deploy(iris): fc51edc to dev+prod2`. It isn't pushed, and neither is the earlier `deploy(iris): 2651f83 to dev+prod2`.
+- `specs/m2-homelab-deploy.md` now records `fc51edc` as live.
+
+**Next**
+- You: push the two home-lab commits.
+- You: point the app back at prod (`http://<prod-host-ip>:8080`) or dev; both have everything now. This PC's backend is still running from the session, with touch logging.
+- Check that swipes feel right both ways on prod. If left still snaps, run the scripted test (see "smoother swipes" below).
+- Pair Bedroom on dev.
+
+**Blockers**
+- None.
+
 ## 2026-10-05 (smoother swipes)
 
 **Done**
