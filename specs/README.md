@@ -55,7 +55,7 @@ Everything lives in the `iris` monorepo (`daedalus1215/iris`, D7):
 | What | Details (as of 2026-10-04) |
 |---|---|
 | Apple TV | "Bedroom": Apple TV 4K, tvOS 26.6, `<bedroom-ip>`. Companion (TCP 49153) and AirPlay (TCP 7000) both require pairing. This PC is paired over both as "Iris (local)". |
-| Apple TV 2 | "Living Room": Apple TV 4K (gen 2), tvOS 26.6, `<living-room-ip>`. Companion on TCP 55339 (ports differ per device), AirPlay on TCP 7000. Paired over both protocols as "Iris (local)". |
+| Apple TV 2 | "Living Room": Apple TV 4K (gen 2), tvOS 26.6, `<living-room-ip>`. Companion on a port that moves (55339, then 55727 on 2026-10-05; the backend rescans when it's refused), AirPlay on TCP 7000. Paired over both protocols as "Iris (local)". |
 | This PC | ARM (aarch64). `<laptop-ip>` on Wi-Fi, the same LAN as the Apple TVs. Node 26, Python 3.14, uv. The ufw firewall blocks incoming connections except LocalSend. |
 | Docker here | 29.8 and Compose 5.5 are installed, but the service is inactive and the user isn't in the `docker` group. |
 | Android tooling here | This Mac can't run `aapt2` (ARM with 16 KB pages), so APKs build in GitHub Actions (D10). A JDK is still needed here for the core tests. |

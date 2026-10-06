@@ -21,6 +21,9 @@ Newest first. Add one entry per working session.
 - You tried again: a swipe left still snapped right as you lifted. In 102 logged swipes, no left swipe had a single rightward step, so the snap came from the TV. Many left swipes had run off the touchpad's left edge (pinned at 0). You then noticed that swipes starting on the right side were fine, and ones starting left of the middle weren't.
   - Fix (D21): every drag starts in the middle of the TV's touchpad and moves with the finger. Android and web, one commit each. Replayed on the web: a left swipe from near the pad's left edge and a right swipe from near its right edge both started at 500 and moved evenly.
   - A scripted five-swipe test was prepared but not run. It sends paced touches through the backend's touch socket, 16 ms apart, with `t`: left across the middle (700→400), the same then resting 300 ms, left into the edge (400→0) then resting, right then resting (300→600), and left from the centre (500→200).
+- Then the app reported connection refused. The phone reached this PC fine, but Living Room had moved its Companion port from 55339 to 55727, and the backend kept connecting to the port from its startup scan.
+  - A rescan got it going again.
+  - Fix: a failed connect now rescans and retries once, at most every 30 s per device, so a switched-off TV doesn't cost a scan per press. 2 new tests, 43 in total.
 - You: install the new APK and try swiping both ways on the TV, starting anywhere on the pad. If left still snaps, run the scripted test next; if it's right, look at how far a swipe moves.
 
 **Blockers**
