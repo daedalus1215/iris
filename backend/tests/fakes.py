@@ -16,8 +16,11 @@ class FakeService:
 
 
 class FakeConfig:
-    def __init__(self, identifier: str, name: str = "Bedroom", paired: bool = True) -> None:
+    def __init__(
+        self, identifier: str, name: str = "Bedroom", paired: bool = True, port: int = 49153
+    ) -> None:
         self.identifier = identifier
+        self.port = port  # Companion's port, which the Apple TV can move
         self.all_identifiers = [identifier, f"{identifier}-alt"]
         self.name = name
         self.address = "192.0.2.10"
@@ -183,6 +186,7 @@ class FakeClient:
         self.handlers: list[FakePairingHandler] = []
         self.scans = 0
         self.storage_obj = FakeStorage()
+        self.refused_ports: set[int] = set()  # ports the Apple TV refuses connections on
         self.keyboard = FakeKeyboard(self.calls)
 
     def storage(self, path: str) -> FakeStorage:
@@ -193,6 +197,8 @@ class FakeClient:
         return list(self.configs)
 
     async def connect(self, config, storage) -> FakeAppleTV:
+        if config.port in self.refused_ports:
+            raise ConnectionRefusedError(111, "Connection refused")
         atv = FakeAppleTV(self.calls, self.fail, self.keyboard)
         self.connections.append(atv)
         return atv
