@@ -6,10 +6,11 @@ import time
 import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from typing import Any
 
 import pyatv
 from pyatv import exceptions
-from pyatv.const import KeyboardFocusState, OperatingSystem, Protocol
+from pyatv.const import KeyboardFocusState, OperatingSystem, Protocol, TouchAction
 from pyatv.interface import (
     AppleTV,
     BaseConfig,
@@ -29,6 +30,8 @@ PAIRING_PROTOCOLS = {"companion": Protocol.Companion, "airplay": Protocol.AirPla
 PAIRING_TTL = 120.0
 SCAN_TIMEOUT = 5
 CONNECT_TIMEOUT = 15.0
+# After a failed connect, scan again at most this often (seconds) per device; see _connection.
+RESCAN_INTERVAL = 30.0
 
 # Errors that mean the connection is gone, so reconnecting may help.
 CONNECTION_ERRORS = (exceptions.ConnectionLostError, exceptions.ConnectionFailedError, OSError)
@@ -102,6 +105,15 @@ class PyatvClient:
 
 
 @dataclass
+class _TouchClock:
+    """Puts a client's touch times on one Companion session's clock."""
+
+    session: object  # the pyatv Companion API whose clock this is
+    offset_ns: int  # session time minus client time, fixed at each press
+    last_ns: int  # the last time sent, so times never go backwards
+
+
+@dataclass
 class _PairingSession:
     device_id: str
     protocol: str
@@ -140,6 +152,9 @@ class DeviceManager:
         self._locks: dict[str, asyncio.Lock] = {}
         self._pairings: dict[str, _PairingSession] = {}
         self._keyboard_watchers: dict[str, set[KeyboardWatcher]] = {}
+        self._touch_clocks: dict[str, _TouchClock] = {}
+        # When each device was last scanned for after a failed connect (time.monotonic).
+        self._rescanned: dict[str, float] = {}
         self._tasks: set[asyncio.Task] = set()
 
     async def start(self) -> None:
@@ -226,14 +241,44 @@ class DeviceManager:
             elapsed_ms,
         )
 
-    async def touch(self, device_id: str, phase: str, x: int, y: int) -> None:
-        """One step of a finger on the Siri Remote's touch surface; x and y run 0 to 1000."""
+    async def touch(
+        self, device_id: str, phase: str, x: int, y: int, t: float | None = None
+    ) -> None:
+        """One step of a finger on the Siri Remote's touch surface; x and y run 0 to 1000.
+
+        [t] is when the finger was there, in milliseconds on the client's own clock. The Apple
+        TV works out a swipe's speed from each event's time, so it should be the finger's: Wi-Fi
+        often delivers several events at once, and stamping them on arrival makes a small
+        wobble look like a fast flick. Without [t], the event is stamped as it goes out.
+        """
         mode = TOUCH_PHASES.get(phase)
         if mode is None:
             raise InvalidRequest(f"unknown touch phase '{phase}'")
         config = await self._config(device_id)
-        await self._call(config, lambda atv: atv.touch.action(x, y, mode))
-        log.debug("%s touch %s %d,%d", config.identifier, phase, x, y)
+        device_id = config.identifier
+        await self._call(config, lambda atv: self._touch(device_id, atv, x, y, mode, t))
+        log.debug("%s touch %s %d,%d t=%s", device_id, phase, x, y, t)
+
+    async def _touch(
+        self, device_id: str, atv: AppleTV, x: int, y: int, mode: TouchAction, t: float | None
+    ) -> None:
+        companion = atv.touch.get(Protocol.Companion) if t is not None else None
+        if companion is None:
+            await atv.touch.action(x, y, mode)
+            return
+        api = companion.api
+        now_ns = time.time_ns() - api._base_timestamp
+        client_ns = round(t * 1_000_000)
+        clock = self._touch_clocks.get(device_id)
+        if clock is None or clock.session is not api:
+            clock = self._touch_clocks[device_id] = _TouchClock(api, now_ns - client_ns, -1)
+        elif mode == TouchAction.Press:
+            # Each drag starts at the session's present (or just after the last event, if that
+            # ran ahead); its later events keep the client's spacing, however they arrive.
+            clock.offset_ns = max(now_ns, clock.last_ns + 1) - client_ns
+        ns = max(client_ns + clock.offset_ns, clock.last_ns + 1)
+        clock.last_ns = ns
+        await _send_touch(api, x, y, mode, ns)
 
     async def _call[T](self, config: BaseConfig, call: Callable[[AppleTV], Awaitable[T]]) -> T:
         """Run one pyatv call on the device's open connection, reconnecting once if it dropped.
@@ -262,7 +307,22 @@ class DeviceManager:
         if not any(_has_credentials(config, p) for p in PAIRING_PROTOCOLS.values()):
             raise NotPaired(f"'{config.name}' isn't paired yet")
         started = time.perf_counter()
-        atv = await asyncio.wait_for(self._client.connect(config, self._storage), CONNECT_TIMEOUT)
+        try:
+            atv = await self._connect(config)
+        except CONNECTION_ERRORS as e:
+            # Apple TVs move their Companion port now and then, and pyatv connects to the port
+            # from the last scan, which the TV then refuses. So scan again and retry, but at most
+            # every RESCAN_INTERVAL, so a TV that's switched off doesn't cost a scan per press.
+            last = self._rescanned.get(device_id)
+            if last is not None and time.monotonic() - last < RESCAN_INTERVAL:
+                raise
+            self._rescanned[device_id] = time.monotonic()
+            log.info("connecting to %s failed (%r); scanning again", device_id, e)
+            await self.scan()
+            config = self._configs.get(device_id)
+            if config is None:
+                raise
+            atv = await self._connect(config)
         listener = _ConnectionListener(self, device_id, atv)
         atv.listener = listener
         atv.keyboard.listener = listener
@@ -270,6 +330,9 @@ class DeviceManager:
         self._listeners[device_id] = listener
         log.info("connected to %s in %.0f ms", device_id, (time.perf_counter() - started) * 1000)
         return atv
+
+    async def _connect(self, config: BaseConfig) -> AppleTV:
+        return await asyncio.wait_for(self._client.connect(config, self._storage), CONNECT_TIMEOUT)
 
     def _forget(self, device_id: str, atv: AppleTV) -> None:
         """Drop a connection, unless it has already been replaced by a newer one."""
@@ -399,6 +462,18 @@ class DeviceManager:
         await self._storage.save()
         if self._settings.storage_file.exists():
             self._settings.storage_file.chmod(0o600)
+
+
+async def _send_touch(api: Any, x: int, y: int, mode: TouchAction, ns: int) -> None:
+    """pyatv's Companion hid_event, with the event's time given rather than taken now.
+
+    pyatv 0.18 has no public way to pass the time, so this uses its internals: this and
+    _base_timestamp above. test_pyatv_touch_internals fails if an upgrade changes them.
+    """
+    await api._send_event(
+        "_hidT",
+        {"_ns": ns, "_tFg": 1, "_cx": x, "_tPh": mode.value, "_cy": y},
+    )
 
 
 async def _keyboard_state(atv: AppleTV) -> KeyboardState:

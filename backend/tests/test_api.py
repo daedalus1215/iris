@@ -90,6 +90,29 @@ def test_reconnects_after_connection_lost(client, fake):
     assert len(fake.connections) == 2
 
 
+def test_a_moved_companion_port_is_found_by_scanning_again(client, fake):
+    command(client, "up")
+    fake.connections[0].listener.connection_lost(Exception("tv slept"))
+    # The TV comes back on another port, which only a fresh scan knows.
+    fake.refused_ports.add(49153)
+    fake.configs = [
+        FakeConfig(DEVICE, port=55727),
+        FakeConfig("UNPAIRED", name="Den", paired=False),
+    ]
+
+    assert command(client, "down").status_code == 204
+    assert fake.scans == 2
+    assert fake.calls[-1] == ("remote_control.down", ())
+
+
+def test_a_tv_that_refuses_is_scanned_for_at_most_every_30_seconds(client, fake):
+    fake.refused_ports.add(49153)
+
+    assert command(client, "up").status_code == 503
+    assert command(client, "up").status_code == 503
+    assert fake.scans == 2  # the first listing, then one rescan
+
+
 def test_retries_once_when_the_connection_dropped_silently(client, fake):
     command(client, "up")
     fake.fail["remote_control.down"] = exceptions.ConnectionLostError("gone")
@@ -188,6 +211,64 @@ def test_dropping_the_socket_mid_drag_lifts_the_finger(client, fake):
         ws.close()
 
     assert fake.calls[-1] == ("touch.action", (620, 480, TouchAction.Release))
+
+
+def sent_touches(fake):
+    return [content for name, (_, content) in fake.calls if name == "companion.event"]
+
+
+def test_touch_times_from_the_client_set_the_spacing_however_they_arrive(client, fake):
+    # Sent back to back, as when Wi-Fi delivers a burst at once.
+    with client.websocket_connect(touch_url()) as ws:
+        ws.send_json({"phase": "press", "x": 300, "y": 500, "t": 1000.0})
+        ws.send_json({"phase": "move", "x": 400, "y": 500, "t": 1016.0})
+        ws.send_json({"phase": "move", "x": 500, "y": 500, "t": 1032.5})
+        ws.send_json({"phase": "release", "x": 520, "y": 500, "t": 1040.5})
+
+    events = sent_touches(fake)
+    times = [event["_ns"] for event in events]
+    assert [b - a for a, b in zip(times, times[1:], strict=False)] == [
+        16_000_000,
+        16_500_000,
+        8_000_000,
+    ]
+    assert [(e["_tPh"], e["_cx"], e["_cy"], e["_tFg"]) for e in events] == [
+        (TouchAction.Press.value, 300, 500, 1),
+        (TouchAction.Hold.value, 400, 500, 1),
+        (TouchAction.Hold.value, 500, 500, 1),
+        (TouchAction.Release.value, 520, 500, 1),
+    ]
+
+
+def test_each_drag_starts_at_the_present_and_times_never_go_back(client, fake):
+    with client.websocket_connect(touch_url()) as ws:
+        ws.send_json({"phase": "press", "x": 500, "y": 500, "t": 90_000.0})
+        ws.send_json({"phase": "release", "x": 600, "y": 500, "t": 90_400.0})
+        # A client whose clock started again, e.g. a reloaded page.
+        ws.send_json({"phase": "press", "x": 500, "y": 500, "t": 5.0})
+        ws.send_json({"phase": "release", "x": 400, "y": 500, "t": 105.0})
+
+    times = [event["_ns"] for event in sent_touches(fake)]
+    assert times == sorted(times) and len(set(times)) == 4
+    assert times[3] - times[2] == 100_000_000
+
+
+def test_pyatv_touch_internals():
+    """The pyatv internals _send_touch relies on, since there's no public way to pass a time."""
+    import inspect
+
+    from pyatv.core.relayer import Relayer
+    from pyatv.protocols.companion import CompanionTouchGestures
+    from pyatv.protocols.companion.api import CompanionAPI
+
+    assert inspect.iscoroutinefunction(CompanionAPI._send_event)
+    assert "self._base_timestamp = time.time_ns()" in inspect.getsource(CompanionAPI._touch_start)
+    hid_event = inspect.getsource(CompanionAPI.hid_event)
+    assert all(
+        key in hid_event for key in ('"_hidT"', '"_ns"', '"_tFg"', '"_cx"', '"_tPh"', '"_cy"')
+    )
+    assert "self.api = api" in inspect.getsource(CompanionTouchGestures.__init__)
+    assert callable(Relayer.get)
 
 
 def keyboard_url(device=DEVICE):

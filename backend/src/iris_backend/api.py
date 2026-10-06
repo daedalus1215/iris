@@ -67,6 +67,7 @@ class TouchEvent(BaseModel):
     phase: str
     x: int = Field(ge=0, le=1000)
     y: int = Field(ge=0, le=1000)
+    t: float | None = None  # when, in ms on the client's clock; older clients don't send it
 
 
 class KeyboardBody(BaseModel):
@@ -144,10 +145,11 @@ def create_app(settings: Settings | None = None, manager: DeviceManager | None =
 
     @api.websocket("/devices/{device_id}/touch")
     async def touch(websocket: WebSocket, device_id: str) -> None:
-        """A finger on the touchpad, as a stream of {phase, x, y}; x and y run 0 to 1000.
+        """A finger on the touchpad, as a stream of {phase, x, y, t}; x and y run 0 to 1000.
 
-        A phase is press, move or release. Errors come back as {detail, status}, and the
-        socket stays open, so the next touch can try again.
+        A phase is press, move or release, and t is when, in ms on the client's own clock.
+        Errors come back as {detail, status}, and the socket stays open, so the next touch can
+        try again.
         """
         await websocket.accept()
         held: TouchEvent | None = None  # last position while a finger is down
@@ -156,7 +158,7 @@ def create_app(settings: Settings | None = None, manager: DeviceManager | None =
                 message = await websocket.receive_text()
                 try:
                     event = TouchEvent.model_validate_json(message)
-                    await manager.touch(device_id, event.phase, event.x, event.y)
+                    await manager.touch(device_id, event.phase, event.x, event.y, event.t)
                     held = event if event.phase != "release" else None
                 except ValidationError:
                     await websocket.send_json({"detail": "bad touch event", "status": 400})
@@ -166,7 +168,7 @@ def create_app(settings: Settings | None = None, manager: DeviceManager | None =
             # Don't leave a finger resting on the Apple TV's touchpad.
             if held is not None:
                 with contextlib.suppress(Exception):
-                    await manager.touch(device_id, "release", held.x, held.y)
+                    await manager.touch(device_id, "release", held.x, held.y, held.t)
 
     @api.websocket("/devices/{device_id}/keyboard")
     async def keyboard(websocket: WebSocket, device_id: str) -> None:

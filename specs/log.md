@@ -2,6 +2,51 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-05 (smoother swipes)
+
+**Done**
+- You reported swipes as slightly janky, with a swipe right sometimes snapping back left. The cause was D18's known limit: touch times taken on arrival, plus the finger sliding back as it lifts (D20).
+- On branch `smooth-swipes`, one commit per change:
+  - Backend: touch events take the finger's time `t`, and the backend sends pyatv's Companion touch event with that time. 41 tests (3 new, including one that checks the pyatv internals); no failures in 10 single-core runs.
+  - Android and web send each touch's own time.
+  - Android and web ignore a backward slide at lift-off. Checked on the web in headless Chromium against the mock backend: a swipe right whose finger slid 6 px back as it lifted released where the drag last was, and one that pushed on kept the extra.
+- You tried the APK against this PC's backend: swipes right were better, but almost every swipe left was still bad.
+  - With the backend logging each touch, 21 swipes showed no backward steps, and phone timing was steady at 16–17 ms.
+  - The difference: over their last third, left swipes curved 12–30° downward (a thumb's arc), while right swipes stayed within 5°.
+  - Fix (D20): a swipe that sets out within 30° of an axis stays on it. This is `SwipeRail` in Android core (4 tests, 53 in total), plus the same rule on the web. Replayed in headless Chromium: swipe #7's arcing path reached the backend perfectly level, a wobbly upward swipe stayed in its column, and a diagonal stayed free.
+- This branch also carries the `log-keyboard-shipped` commit, so that PR can be closed.
+
+**Next**
+- Merge, then ship to dev and prod2. The timing fix needs the new backend; the lift-off fix is in the apps alone.
+- You tried again: a swipe left still snapped right as you lifted. In 102 logged swipes, no left swipe had a single rightward step, so the snap came from the TV. Many left swipes had run off the touchpad's left edge (pinned at 0). You then noticed that swipes starting on the right side were fine, and ones starting left of the middle weren't.
+  - Fix (D21): every drag starts in the middle of the TV's touchpad and moves with the finger. Android and web, one commit each. Replayed on the web: a left swipe from near the pad's left edge and a right swipe from near its right edge both started at 500 and moved evenly.
+  - A scripted five-swipe test was prepared but not run. It sends paced touches through the backend's touch socket, 16 ms apart, with `t`: left across the middle (700→400), the same then resting 300 ms, left into the edge (400→0) then resting, right then resting (300→600), and left from the centre (500→200).
+- Then the app reported connection refused. The phone reached this PC fine, but Living Room had moved its Companion port from 55339 to 55727, and the backend kept connecting to the port from its startup scan.
+  - A rescan got it going again.
+  - Fix: a failed connect now rescans and retries once, at most every 30 s per device, so a switched-off TV doesn't cost a scan per press. 2 new tests, 43 in total.
+- You: install the new APK and try swiping both ways on the TV, starting anywhere on the pad. If left still snaps, run the scripted test next; if it's right, look at how far a swipe moves.
+
+**Blockers**
+- None.
+
+## 2026-10-05 (keyboard shipped)
+
+**Done**
+- You merged the keyboard PR (#7). `main` (`2651f83`) has the same content CI tested on `keyboard` (`70fbb1a`).
+- Shipped `2651f83` to dev with `./compose/ship.sh iris dev`, then promoted the same image to prod2. Both are healthy.
+- Checked both through nginx on `:8080`, the phones' path, without typing or touching anything. On each paired TV, the keyboard socket reports the text field (none open), and the touch socket answers.
+  - Prod: Bedroom and Living Room are both paired.
+  - Dev: Living Room only.
+- Home-lab commit `deploy(iris): 2651f83 to dev+prod2`, not pushed.
+
+**Next**
+- You: push the home-lab commit.
+- You: try a search on each TV with the phone's keyboard, in the app (dev or prod) and the web remote. Real focus events haven't been seen yet.
+- Pair Bedroom on dev.
+
+**Blockers**
+- None.
+
 ## 2026-10-05 (keyboard)
 
 **Done**

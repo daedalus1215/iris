@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.daedalus1215.iris.R
 import io.github.daedalus1215.iris.RemoteViewModel
 import io.github.daedalus1215.iris.core.RemoteState
+import io.github.daedalus1215.iris.core.SwipeRail
 import io.github.daedalus1215.iris.core.TouchPhase
 import io.github.daedalus1215.iris.ui.theme.IrisColors
 import kotlin.math.roundToInt
@@ -75,8 +76,9 @@ private val KeyShape = RoundedCornerShape(22.dp)
 private val KeySpacing = 12.dp
 private val PadShape = RoundedCornerShape(28.dp)
 
-/** The Apple TV's touchpad runs 0 to 1000 on each axis. */
+/** The Apple TV's touchpad runs 0 to 1000 on each axis; every drag starts in the middle. */
 private const val TOUCH_RANGE = 1000
+private const val TOUCH_MIDDLE = TOUCH_RANGE / 2
 
 /** Moves go out at most this often: about 60 a second, like pyatv's own swipes. */
 private const val TOUCH_INTERVAL_MS = 16L
@@ -478,14 +480,16 @@ private fun DPad(
 /**
  * Like the Siri Remote's touch surface. A drag streams the finger to the Apple TV, which moves
  * focus with its own glide (or scrubs, during playback); a tap selects; a long press holds
- * select, for context menus. The pad stands for the remote's whole surface, so where a drag
- * starts matters, as it does on the remote. Taps and long presses send no touches at all, so a
- * tap near an edge can't read as an arrow.
+ * select, for context menus. Every drag starts in the middle of the Apple TV's touchpad and
+ * moves with the finger, the pad's width spanning the touchpad's: the TV treats touches
+ * differently depending on where they are, and swipes that started left of the middle snapped
+ * back right as they lifted. A drag that sets out along an axis stays on it (see [SwipeRail]).
+ * Taps and long presses send no touches at all, so a tap near an edge can't read as an arrow.
  */
 @Composable
 private fun TouchPad(
     enabled: Boolean,
-    onTouch: (phase: TouchPhase, x: Int, y: Int) -> Unit,
+    onTouch: (phase: TouchPhase, x: Int, y: Int, t: Long) -> Unit,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
@@ -531,17 +535,27 @@ private fun TouchPad(
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown()
-                    var at = down.position
-                    finger = at
-                    fun send(phase: TouchPhase, position: Offset) = currentOnTouch(
-                        phase,
-                        (position.x / size.width * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE),
-                        (position.y / size.height * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE),
-                    )
+                    var at = FingerAt(down.position, down.uptimeMillis)
+                    finger = at.position
+                    // Both set at the press: where the drag starts on screen, and its rail.
+                    var origin = Offset.Zero
+                    var rail: SwipeRail? = null
+                    fun send(phase: TouchPhase, sample: FingerAt) {
+                        if (phase == TouchPhase.PRESS) origin = sample.position
+                        val moved = (sample.position - origin) * (TOUCH_RANGE / size.width.toFloat())
+                        val x = (TOUCH_MIDDLE + moved.x).roundToInt().coerceIn(0, TOUCH_RANGE)
+                        val y = (TOUCH_MIDDLE + moved.y).roundToInt().coerceIn(0, TOUCH_RANGE)
+                        if (phase == TouchPhase.PRESS) {
+                            val travelled = sample.position - down.position
+                            rail = SwipeRail.start(travelled.x, travelled.y, x, y)
+                        }
+                        val (railX, railY) = rail?.follow(x, y) ?: (x to y)
+                        currentOnTouch(phase, railX, railY, sample.time)
+                    }
                     try {
-                        val start = awaitGestureStart(down.id, down.position) { position ->
-                            at = position
-                            finger = position
+                        val start = awaitGestureStart(down.id, down.position) { moved ->
+                            at = moved
+                            finger = moved.position
                         }
                         when (start) {
                             GestureStart.TAP -> {
@@ -552,9 +566,9 @@ private fun TouchPad(
                                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                 currentOnLongPress()
                             }
-                            GestureStart.DRAG -> streamDrag(down.id, at) { phase, position ->
-                                finger = position
-                                send(phase, position)
+                            GestureStart.DRAG -> streamDrag(down.id, at) { phase, moved ->
+                                finger = moved.position
+                                send(phase, moved)
                             }
                             GestureStart.CANCEL -> Unit
                         }
@@ -588,13 +602,19 @@ private fun TouchPad(
 private enum class GestureStart { TAP, DRAG, LONG_PRESS, CANCEL }
 
 /**
+ * Where the finger was, and when: [time] is uptime in ms, from the pointer event. The Apple TV
+ * takes a swipe's speed from these times, so they're the finger's, not when they're sent.
+ */
+private data class FingerAt(val position: Offset, val time: Long)
+
+/**
  * Decides what a new touch is: the finger lifts (a tap), moves past touch slop (a drag), or
  * stays put (a long press). [onMove] follows the finger meanwhile.
  */
 private suspend fun AwaitPointerEventScope.awaitGestureStart(
     pointer: PointerId,
     downAt: Offset,
-    onMove: (Offset) -> Unit,
+    onMove: (FingerAt) -> Unit,
 ): GestureStart = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
     var start: GestureStart? = null
     while (start == null) {
@@ -604,7 +624,7 @@ private suspend fun AwaitPointerEventScope.awaitGestureStart(
             // A consumed lift means the system took the gesture over, e.g. for back.
             !change.pressed -> if (change.isConsumed) GestureStart.CANCEL else GestureStart.TAP
             else -> {
-                onMove(change.position)
+                onMove(FingerAt(change.position, change.uptimeMillis))
                 val moved = (change.position - downAt).getDistance() > viewConfiguration.touchSlop
                 if (moved) GestureStart.DRAG else null
             }
@@ -615,28 +635,42 @@ private suspend fun AwaitPointerEventScope.awaitGestureStart(
 
 /**
  * Streams a drag until the finger lifts: a press where it was recognized, moves at most every
- * [TOUCH_INTERVAL_MS], and a release where it ended, even if the gesture is cut short.
+ * [TOUCH_INTERVAL_MS], and a release where it ended (see [liftOff]), even if the gesture is cut
+ * short.
  */
 private suspend fun AwaitPointerEventScope.streamDrag(
     pointer: PointerId,
-    from: Offset,
-    onTouch: (TouchPhase, Offset) -> Unit,
+    from: FingerAt,
+    onTouch: (TouchPhase, FingerAt) -> Unit,
 ) {
     var at = from
-    var lastSent = 0L
+    var sent = from
     onTouch(TouchPhase.PRESS, at)
     try {
         while (true) {
             val change = awaitPointerEvent().changes.firstOrNull { it.id == pointer } ?: break
-            at = change.position
+            at = FingerAt(change.position, change.uptimeMillis)
             if (!change.pressed) break
             change.consume()
-            if (change.uptimeMillis - lastSent >= TOUCH_INTERVAL_MS) {
+            if (at.time - sent.time >= TOUCH_INTERVAL_MS) {
                 onTouch(TouchPhase.MOVE, at)
-                lastSent = change.uptimeMillis
+                sent = at
             }
         }
     } finally {
-        onTouch(TouchPhase.RELEASE, at)
+        onTouch(TouchPhase.RELEASE, liftOff(from.position, sent, at))
     }
+}
+
+/**
+ * Where to release a drag that went from [pressed] to [sent], the last sample sent, and lifted at
+ * [lifted]. A finger often slides back a little as it lifts, and a release there would read as a
+ * flick the other way, so a tail that points back against the drag is dropped. A tail that keeps
+ * going is kept, so a flick keeps its speed.
+ */
+private fun liftOff(pressed: Offset, sent: FingerAt, lifted: FingerAt): FingerAt {
+    val drag = sent.position - pressed
+    val tail = lifted.position - sent.position
+    val backwards = drag.x * tail.x + drag.y * tail.y < 0
+    return if (backwards) FingerAt(sent.position, lifted.time) else lifted
 }

@@ -49,7 +49,7 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun release() = controller.release()
 
-    fun touch(phase: TouchPhase, x: Int, y: Int) = controller.touch(phase, x, y)
+    fun touch(phase: TouchPhase, x: Int, y: Int, t: Long) = controller.touch(phase, x, y, t)
 
     fun closeTouchpad() = controller.closeTouchpad()
 

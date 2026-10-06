@@ -1,5 +1,6 @@
 """Stand-ins for pyatv objects, so tests run without a network or an Apple TV."""
 
+import time
 import weakref
 from types import SimpleNamespace
 
@@ -15,8 +16,11 @@ class FakeService:
 
 
 class FakeConfig:
-    def __init__(self, identifier: str, name: str = "Bedroom", paired: bool = True) -> None:
+    def __init__(
+        self, identifier: str, name: str = "Bedroom", paired: bool = True, port: int = 49153
+    ) -> None:
         self.identifier = identifier
+        self.port = port  # Companion's port, which the Apple TV can move
         self.all_identifiers = [identifier, f"{identifier}-alt"]
         self.name = name
         self.address = "192.0.2.10"
@@ -49,6 +53,28 @@ class FakeInterface:
             self._calls.append((key, args))
 
         return call
+
+
+class FakeCompanionAPI:
+    """The pyatv Companion internals that touch events with the client's times go through."""
+
+    def __init__(self, calls: list) -> None:
+        self._calls = calls
+        self._base_timestamp = time.time_ns()
+
+    async def _send_event(self, identifier: str, content: dict) -> None:
+        self._calls.append(("companion.event", (identifier, dict(content))))
+
+
+class FakeTouch(FakeInterface):
+    """touch.action and friends, plus pyatv's Relayer.get for the Companion protocol."""
+
+    def __init__(self, calls: list, fail: dict) -> None:
+        super().__init__("touch", calls, fail)
+        self._companion = SimpleNamespace(api=FakeCompanionAPI(calls))
+
+    def get(self, protocol: Protocol):
+        return self._companion if protocol == Protocol.Companion else None
 
 
 class FakeKeyboard:
@@ -97,7 +123,7 @@ class FakeAppleTV:
         self.remote_control = FakeInterface("remote_control", calls, fail)
         self.audio = FakeInterface("audio", calls, fail)
         self.power = FakeInterface("power", calls, fail)
-        self.touch = FakeInterface("touch", calls, fail)
+        self.touch = FakeTouch(calls, fail)
 
     # Held weakly, like pyatv: whoever sets a listener has to keep it alive.
     @property
@@ -160,6 +186,7 @@ class FakeClient:
         self.handlers: list[FakePairingHandler] = []
         self.scans = 0
         self.storage_obj = FakeStorage()
+        self.refused_ports: set[int] = set()  # ports the Apple TV refuses connections on
         self.keyboard = FakeKeyboard(self.calls)
 
     def storage(self, path: str) -> FakeStorage:
@@ -170,6 +197,8 @@ class FakeClient:
         return list(self.configs)
 
     async def connect(self, config, storage) -> FakeAppleTV:
+        if config.port in self.refused_ports:
+            raise ConnectionRefusedError(111, "Connection refused")
         atv = FakeAppleTV(self.calls, self.fail, self.keyboard)
         self.connections.append(atv)
         return atv

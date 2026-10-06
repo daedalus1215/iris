@@ -116,19 +116,19 @@ class RemoteControllerTest {
         val client = FakeClient()
         val controller = loaded(client)
 
-        controller.touch(TouchPhase.PRESS, 300, 500)
-        controller.touch(TouchPhase.MOVE, 450, 500)
-        controller.touch(TouchPhase.RELEASE, 600, 500)
-        controller.touch(TouchPhase.PRESS, 500, 500)
+        controller.touch(TouchPhase.PRESS, 300, 500, 1000)
+        controller.touch(TouchPhase.MOVE, 450, 500, 1016)
+        controller.touch(TouchPhase.RELEASE, 600, 500, 1032)
+        controller.touch(TouchPhase.PRESS, 500, 500, 1048)
 
         val pad = client.touchpads.single()
         assertEquals(BEDROOM.id, pad.deviceId)
         assertEquals(
             listOf(
-                Triple(TouchPhase.PRESS, 300, 500),
-                Triple(TouchPhase.MOVE, 450, 500),
-                Triple(TouchPhase.RELEASE, 600, 500),
-                Triple(TouchPhase.PRESS, 500, 500),
+                SentTouch(TouchPhase.PRESS, 300, 500, 1000),
+                SentTouch(TouchPhase.MOVE, 450, 500, 1016),
+                SentTouch(TouchPhase.RELEASE, 600, 500, 1032),
+                SentTouch(TouchPhase.PRESS, 500, 500, 1048),
             ),
             pad.events,
         )
@@ -138,14 +138,14 @@ class RemoteControllerTest {
     fun `a dropped touchpad reopens, and a drag under way starts again with a press`() = runTest {
         val client = FakeClient()
         val controller = loaded(client)
-        controller.touch(TouchPhase.PRESS, 300, 500)
+        controller.touch(TouchPhase.PRESS, 300, 500, 1064)
 
         client.touchpads.single().closed = true
-        controller.touch(TouchPhase.MOVE, 400, 500)
+        controller.touch(TouchPhase.MOVE, 400, 500, 1080)
 
         assertEquals(2, client.touchpads.size)
         assertEquals(
-            listOf(Triple(TouchPhase.PRESS, 400, 500), Triple(TouchPhase.MOVE, 400, 500)),
+            listOf(SentTouch(TouchPhase.PRESS, 400, 500, 1080), SentTouch(TouchPhase.MOVE, 400, 500, 1080)),
             client.touchpads[1].events,
         )
     }
@@ -154,10 +154,10 @@ class RemoteControllerTest {
     fun `a release on a dropped touchpad doesn't open a new one`() = runTest {
         val client = FakeClient()
         val controller = loaded(client)
-        controller.touch(TouchPhase.PRESS, 300, 500)
+        controller.touch(TouchPhase.PRESS, 300, 500, 1096)
 
         client.touchpads.single().closed = true
-        controller.touch(TouchPhase.RELEASE, 400, 500)
+        controller.touch(TouchPhase.RELEASE, 400, 500, 1112)
 
         assertEquals(1, client.touchpads.size)
     }
@@ -167,10 +167,10 @@ class RemoteControllerTest {
         val den = DEN_UNPAIRED.copy(paired = Paired(companion = true, airplay = false))
         val client = FakeClient(devices = listOf(BEDROOM, den))
         val controller = loaded(client, selectedId = BEDROOM.id)
-        controller.touch(TouchPhase.PRESS, 500, 500)
+        controller.touch(TouchPhase.PRESS, 500, 500, 1128)
 
         controller.select(den.id)
-        controller.touch(TouchPhase.PRESS, 500, 500)
+        controller.touch(TouchPhase.PRESS, 500, 500, 1144)
 
         assertEquals(listOf(BEDROOM.id, den.id), client.touchpads.map { it.deviceId })
         assertTrue(client.touchpads[0].closed)
@@ -180,12 +180,12 @@ class RemoteControllerTest {
     fun `touchpad errors show, and the next drag clears them`() = runTest {
         val client = FakeClient()
         val controller = loaded(client)
-        controller.touch(TouchPhase.PRESS, 500, 500)
+        controller.touch(TouchPhase.PRESS, 500, 500, 1160)
 
         client.touchpads.single().onError(IrisException("Apple TV unreachable"))
         assertEquals("Apple TV unreachable", controller.state.value.error)
 
-        controller.touch(TouchPhase.PRESS, 500, 500)
+        controller.touch(TouchPhase.PRESS, 500, 500, 1176)
         assertNull(controller.state.value.error)
     }
 
@@ -194,7 +194,7 @@ class RemoteControllerTest {
         val client = FakeClient(devices = listOf(DEN_UNPAIRED))
         val controller = loaded(client)
 
-        controller.touch(TouchPhase.PRESS, 500, 500)
+        controller.touch(TouchPhase.PRESS, 500, 500, 1192)
 
         assertEquals(emptyList(), client.touchpads)
     }
@@ -327,7 +327,7 @@ class RemoteControllerTest {
         val old = FakeClient(env = "local")
         val controller = loaded(old)
 
-        controller.touch(TouchPhase.PRESS, 500, 500)
+        controller.touch(TouchPhase.PRESS, 500, 500, 1208)
         controller.useClient(FakeClient(devices = listOf(DEN_UNPAIRED), env = "prod"))
         advanceUntilIdle()
 
