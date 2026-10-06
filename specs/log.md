@@ -10,11 +10,15 @@ Newest first. Add one entry per working session.
   - Backend: touch events take the finger's time `t`, and the backend sends pyatv's Companion touch event with that time. 41 tests (3 new, including one that checks the pyatv internals); no failures in 10 single-core runs.
   - Android and web send each touch's own time.
   - Android and web ignore a backward slide at lift-off. Checked on the web in headless Chromium against the mock backend: a swipe right whose finger slid 6 px back as it lifted released where the drag last was, and one that pushed on kept the extra.
+- You tried the APK against this PC's backend: swipes right were better, but almost every swipe left was still bad.
+  - With the backend logging each touch, 21 swipes showed no backward steps, and phone timing was steady at 16–17 ms.
+  - The difference: over their last third, left swipes curved 12–30° downward (a thumb's arc), while right swipes stayed within 5°.
+  - Fix (D20): a swipe that sets out within 30° of an axis stays on it. This is `SwipeRail` in Android core (4 tests, 53 in total), plus the same rule on the web. Replayed in headless Chromium: swipe #7's arcing path reached the backend perfectly level, a wobbly upward swipe stayed in its column, and a diagonal stayed free.
 - This branch also carries the `log-keyboard-shipped` commit, so that PR can be closed.
 
 **Next**
 - Merge, then ship to dev and prod2. The timing fix needs the new backend; the lift-off fix is in the apps alone.
-- You: install the new APK and try swiping on the TV. If it's still not smooth, look at how far a swipe moves next.
+- You: install the new APK and try swiping both ways on the TV. If it's still not right, look at how far a swipe moves next.
 
 **Blockers**
 - None.

@@ -61,7 +61,7 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 - [x] Try it on the phone: Iris Dev against the dev server. Paired Living Room over both protocols from the app, then controlled it (2026-10-04).
 - [x] Touchpad (D18): a drag streams touches, a tap selects, and a long press holds select. The arrow buttons are a setting. The screen no longer scrolls, and the app is portrait only. Core: 11 new tests, 39 in total.
 - [ ] Try the touchpad on the phone, and tune how far a swipe moves
-- [x] Smoother swipes (D20): touches carry the finger's time, and the slide back at lift-off is ignored
+- [x] Smoother swipes (D20): touches carry the finger's time, swipes keep to the axis they set out along, and the slide back at lift-off is ignored
 - [x] Typing with the phone's keyboard (D19): the app watches the TV's text field while it's open, and a dialog opens when one gets focus. Core: 10 new tests, 49 in total.
 - [ ] Try typing on the phone: a search on each TV
 
