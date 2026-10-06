@@ -28,8 +28,7 @@ class SwipeRail private constructor(
 
         /**
          * The rail for a swipe pressed at [pressX], [pressY] (touchpad units), after the finger
-         * moved [dx], [dy] on screen to get there. The angle comes from screen distances, since
-         * the touchpad's units are stretched to the pad's shape.
+         * moved [dx], [dy] on screen to get there; that first movement sets the angle.
          */
         fun start(dx: Float, dy: Float, pressX: Int, pressY: Int): SwipeRail {
             val angle = Math.toDegrees(atan2(abs(dy).toDouble(), abs(dx).toDouble()))
