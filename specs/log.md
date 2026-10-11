@@ -2,6 +2,24 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-05 (keyboard shipped)
+
+**Done**
+- You merged the keyboard PR (#7). `main` (`2651f83`) has the same content CI tested on `keyboard` (`70fbb1a`).
+- Shipped `2651f83` to dev with `./compose/ship.sh iris dev`, then promoted the same image to prod2. Both are healthy.
+- Checked both through nginx on `:8080`, the phones' path, without typing or touching anything. On each paired TV, the keyboard socket reports the text field (none open), and the touch socket answers.
+  - Prod: Bedroom and Living Room are both paired.
+  - Dev: Living Room only.
+- Home-lab commit `deploy(iris): 2651f83 to dev+prod2`, not pushed.
+
+**Next**
+- You: push the home-lab commit.
+- You: try a search on each TV with the phone's keyboard, in the app (dev or prod) and the web remote. Real focus events haven't been seen yet.
+- Pair Bedroom on dev.
+
+**Blockers**
+- None.
+
 ## 2026-10-05 (keyboard)
 
 **Done**
