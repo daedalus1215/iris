@@ -13,6 +13,8 @@ One image, `iris`, built in two stages:
 1. A Node 20+ stage builds `web/` (`quasar build`, output in `dist/spa`).
 2. A Python 3.13-slim stage installs the backend with uv, copies the frontend build into `IRIS_STATIC_DIR`, and runs uvicorn as a non-root user.
 
+Build for both `linux/arm64` and `linux/amd64` (`docker buildx`). This PC is ARM, while most home-lab hosts are x86. pyatv's `miniaudio` dependency may need compiling on one of the two, so the build stage needs a C compiler.
+
 The Dockerfile sits at the repo root, so the build context includes both `backend/` and `web/` (D7).
 
 ### Compose
@@ -49,7 +51,7 @@ This assumes GitHub Container Registry, which is still an open question.
 ### Networking requirements
 
 - **Home-lab host to Apple TV.** The simplest setup is the same subnet as the Apple TV (172.16.0.0/24) with no firewall between them. Across VLANs, allow the host to reach the Apple TV on all TCP ports (AirPlay negotiates extra ports beyond 7000) and on UDP 5353 for scanning. Also set `IRIS_SCAN_HOSTS`, because multicast scans won't cross VLANs.
-- **Phone to host.** On ports 8080 and 8081 over home Wi-Fi, and through Tailscale when away (the host joins the tailnet).
+- **Phone to host.** On ports 8080 and 8081 over home Wi-Fi, and through Tailscale when away (the host joins the tailnet). Open these ports in the host's firewall, as this PC's ufw needed.
 - **Optional:** reverse-proxy hostnames such as `iris.<domain>` and `iris-dev.<domain>` with HTTPS. HTTPS also lets the web remote install as a home-screen app (PWA).
 
 ## Tasks
