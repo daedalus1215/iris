@@ -1,5 +1,6 @@
 """Stand-ins for pyatv objects, so tests run without a network or an Apple TV."""
 
+import time
 import weakref
 from types import SimpleNamespace
 
@@ -51,6 +52,28 @@ class FakeInterface:
         return call
 
 
+class FakeCompanionAPI:
+    """The pyatv Companion internals that touch events with the client's times go through."""
+
+    def __init__(self, calls: list) -> None:
+        self._calls = calls
+        self._base_timestamp = time.time_ns()
+
+    async def _send_event(self, identifier: str, content: dict) -> None:
+        self._calls.append(("companion.event", (identifier, dict(content))))
+
+
+class FakeTouch(FakeInterface):
+    """touch.action and friends, plus pyatv's Relayer.get for the Companion protocol."""
+
+    def __init__(self, calls: list, fail: dict) -> None:
+        super().__init__("touch", calls, fail)
+        self._companion = SimpleNamespace(api=FakeCompanionAPI(calls))
+
+    def get(self, protocol: Protocol):
+        return self._companion if protocol == Protocol.Companion else None
+
+
 class FakeKeyboard:
     """The Apple TV's text field, kept across connections like the real one."""
 
@@ -97,7 +120,7 @@ class FakeAppleTV:
         self.remote_control = FakeInterface("remote_control", calls, fail)
         self.audio = FakeInterface("audio", calls, fail)
         self.power = FakeInterface("power", calls, fail)
-        self.touch = FakeInterface("touch", calls, fail)
+        self.touch = FakeTouch(calls, fail)
 
     # Held weakly, like pyatv: whoever sets a listener has to keep it alive.
     @property
