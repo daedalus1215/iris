@@ -29,11 +29,17 @@ class AppSettings(context: Context) {
         get() = prefs.getBoolean(ARROW_BUTTONS, false)
         set(value) = prefs.edit { putBoolean(ARROW_BUTTONS, value) }
 
+    /** Media controls in the notification shade and on the lock screen. */
+    var mediaControls: Boolean
+        get() = prefs.getBoolean(MEDIA_CONTROLS, false)
+        set(value) = prefs.edit { putBoolean(MEDIA_CONTROLS, value) }
+
     private companion object {
         const val SERVER_URL = "server_url"
         const val TOKEN = "token"
         const val SELECTED_DEVICE = "selected_device"
         const val SELECTED_DEVICE_NAME = "selected_device_name"
         const val ARROW_BUTTONS = "arrow_buttons"
+        const val MEDIA_CONTROLS = "media_controls"
     }
 }
