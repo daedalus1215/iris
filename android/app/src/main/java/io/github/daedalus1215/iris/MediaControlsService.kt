@@ -8,7 +8,9 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
 import android.media.MediaMetadata
+import android.media.VolumeProvider
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Bundle
@@ -22,7 +24,7 @@ import kotlinx.coroutines.cancel
 /**
  * The remote in the notification shade and on the lock screen, where music apps show up: a
  * media session for the selected Apple TV, kept alive by a foreground service while the setting
- * is on. Its buttons work with the app closed.
+ * is on. Its buttons, and the phone's volume keys, work with the app closed.
  */
 class MediaControlsService : Service() {
     private val scope = MainScope()
@@ -44,6 +46,19 @@ class MediaControlsService : Service() {
         }
     }
 
+    /**
+     * The phone's volume keys, while nothing on the phone itself is playing. The TV doesn't say
+     * what its volume is, so the slider Android shows just sits in the middle.
+     */
+    private val volumeKeys = object : VolumeProvider(VolumeProvider.VOLUME_CONTROL_RELATIVE, 100, 50) {
+        override fun onAdjustVolume(direction: Int) {
+            when (direction) {
+                AudioManager.ADJUST_RAISE -> remote.volume("volume_up")
+                AudioManager.ADJUST_LOWER -> remote.volume("volume_down")
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         settings = AppSettings(this)
@@ -59,6 +74,7 @@ class MediaControlsService : Service() {
         )
         session = MediaSession(this, "Iris").apply {
             setCallback(buttons)
+            setPlaybackToRemote(volumeKeys)
             setPlaybackState(playbackState())
             setMetadata(metadata())
             setSessionActivity(openApp())
@@ -86,8 +102,9 @@ class MediaControlsService : Service() {
     }
 
     /**
-     * Always playing, since the TV doesn't say whether it is. So the middle button always
-     * shows pause, and sends play/pause either way. Back and home take the two spare buttons.
+     * Always playing, since the TV doesn't say whether it is, and Android only hands the volume
+     * keys to a session that's playing. So the middle button always shows pause, and sends
+     * play/pause either way. Back and home take the two spare buttons.
      */
     private fun playbackState(): PlaybackState = PlaybackState.Builder()
         .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
