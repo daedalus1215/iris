@@ -67,6 +67,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.github.daedalus1215.iris.R
 import io.github.daedalus1215.iris.RemoteViewModel
 import io.github.daedalus1215.iris.core.RemoteState
+import io.github.daedalus1215.iris.core.SwipeRail
 import io.github.daedalus1215.iris.core.TouchPhase
 import io.github.daedalus1215.iris.ui.theme.IrisColors
 import kotlin.math.roundToInt
@@ -479,8 +480,9 @@ private fun DPad(
  * Like the Siri Remote's touch surface. A drag streams the finger to the Apple TV, which moves
  * focus with its own glide (or scrubs, during playback); a tap selects; a long press holds
  * select, for context menus. The pad stands for the remote's whole surface, so where a drag
- * starts matters, as it does on the remote. Taps and long presses send no touches at all, so a
- * tap near an edge can't read as an arrow.
+ * starts matters, as it does on the remote. A drag that sets out along an axis stays on it (see
+ * [SwipeRail]). Taps and long presses send no touches at all, so a tap near an edge can't read
+ * as an arrow.
  */
 @Composable
 private fun TouchPad(
@@ -533,12 +535,18 @@ private fun TouchPad(
                     val down = awaitFirstDown()
                     var at = FingerAt(down.position, down.uptimeMillis)
                     finger = at.position
-                    fun send(phase: TouchPhase, sample: FingerAt) = currentOnTouch(
-                        phase,
-                        (sample.position.x / size.width * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE),
-                        (sample.position.y / size.height * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE),
-                        sample.time,
-                    )
+                    // Set at the press, from how the finger moved to get there.
+                    var rail: SwipeRail? = null
+                    fun send(phase: TouchPhase, sample: FingerAt) {
+                        val x = (sample.position.x / size.width * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE)
+                        val y = (sample.position.y / size.height * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE)
+                        if (phase == TouchPhase.PRESS) {
+                            val moved = sample.position - down.position
+                            rail = SwipeRail.start(moved.x, moved.y, x, y)
+                        }
+                        val (railX, railY) = rail?.follow(x, y) ?: (x to y)
+                        currentOnTouch(phase, railX, railY, sample.time)
+                    }
                     try {
                         val start = awaitGestureStart(down.id, down.position) { moved ->
                             at = moved
