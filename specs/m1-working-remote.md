@@ -35,7 +35,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 
 - **settings:** reads the environment (pydantic-settings).
 - **devices:** scans with `pyatv.scan(hosts=…, storage=…)`. A device's id is pyatv's `identifier`, not its MAC (D6).
-- **connections:** one pyatv connection per device. It opens on first use and is reused afterwards, reconnects when the connection drops, and closes on shutdown. Commands to one device run one at a time (an `asyncio.Lock`), so held buttons can't build a backlog.
+- **connections:** one pyatv connection per device. It opens on first use and is reused afterwards, reconnects when the connection drops, and closes on shutdown. Commands and touch events to one device run one at a time (an `asyncio.Lock`), so held buttons can't build a backlog.
 - **pairing:** wraps the `pyatv.pair()` handler (`begin` → `pin` → `finish`) for each protocol. Sessions live in memory and expire after 2 minutes. Credentials are saved to `FileStorage` under `IRIS_DATA_DIR`.
 - **api:** the routes below.
 
@@ -49,6 +49,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 | `POST /api/devices/{id}/pairing/{protocol}` | — | `{session}`. The PIN appears on the TV. `protocol` is `companion` or `airplay`. |
 | `POST /api/devices/{id}/pairing/{protocol}/pin` | `{session, pin}` | `{paired: true}` |
 | `POST /api/devices/{id}/commands/{command}` | `{action?: "tap" \| "double_tap" \| "hold"}` | `204` |
+| `WS /api/devices/{id}/touch` | A stream of `{phase: "press" \| "move" \| "release", x, y}`, with x and y from 0 to 1000 (D18) | Only errors, as `{detail, status}`; the socket stays open |
 
 **Commands** (an allowlist; anything else gets a 400): `up`, `down`, `left`, `right`, `select`, `menu`, `home`, `play_pause`, `play`, `pause`, `next`, `previous`, `skip_forward`, `skip_backward`, `volume_up`, `volume_down`, `turn_on`, `turn_off`. Whether volume works depends on the TV's HDMI setup; the spike will tell.
 
@@ -101,6 +102,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 - **pyatv API:** `remote_control.volume_up/down` are deprecated; the backend uses `audio.volume_up/down`.
 - **Companion alone is enough:** pyatv's Companion protocol implements every command Iris sends: arrows, select, menu, home, play/pause, previous/next, skip and volume, plus power. So pairing Companion alone (one PIN per TV) gives a working remote. AirPlay adds things Iris doesn't use, like now-playing details.
 - **Confirmed from the phone:** play/pause, previous/next, volume and power off/on all work. Nothing is left to check.
+- **Touch (tested later on 2026-10-04):** pyatv's Companion touch gestures work on tvOS 26.6. Both TVs report Swipe, Action and Click as available. On Living Room, a drag streamed as press, moves and release moved the scrub bar's marker during playback; the video only jumps on a click, as with the Siri Remote. This is the basis for the touchpad (D18).
 
 ## Tasks
 
@@ -131,6 +133,7 @@ All configuration comes from environment variables. Nothing is hardcoded.
 - [x] Hold-to-repeat without a backlog: one request in flight, 400 ms delay, then a repeat every 150 ms
 - [x] Home button and d-pad layout fix; play and pause merged into one button; volume buttons added
 - [x] Environment badge. Pairing state is shown; live connection state isn't yet.
+- [x] Touchpad (D18), with a switch to bring back the arrow buttons
 
 ### Run and verify
 

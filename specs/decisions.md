@@ -149,3 +149,23 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Decision:** On each home-lab host, the `web` container is published on port 8080, outside Traefik. Its nginx forwards `/api` to the backend, using the network alias `iris-backend`. Phones use `http://<host-ip>:8080`.
 - **Why:** Phones can't resolve `.lan`, and the router is staying as it is. Prod's bare IP belongs to another app. A port of Iris's own needs no phone or router setup, and doesn't touch the other apps' Traefik.
 - **Details:** the rejected options are recorded in home-lab D37. The port gives up nothing Traefik currently adds; Iris uses no TLS or auth from Traefik.
+
+### D18: A touchpad that passes real touches to the Apple TV
+
+- **Date:** 2026-10-04
+- **Status:** Accepted
+- **Decision:** The remote's main control is a touchpad, like the Siri Remote's touch surface and Apple's iPhone remote:
+  - A drag streams touch events (press, move, release) over a WebSocket, `/api/devices/{id}/touch`. The backend passes each one to pyatv's Companion `touch.action`, and tvOS does the rest.
+  - A tap sends `select`, and a long press sends `select` with `hold`. Neither sends touch events.
+  - The arrow buttons stay available as a setting, in the app and the web remote.
+- **Why:**
+  - Real touches get tvOS's own behavior: glide, flick to scroll, and scrubbing during playback. Turning swipes into arrow presses can't do that.
+  - A WebSocket keeps the events in order and cheap at 60 a second. Separate HTTP requests could arrive out of order.
+  - It works: on 2026-10-04 both TVs reported the touch features as available, and a streamed drag moved the scrub bar on Living Room (M1, "Spike results").
+- **Details:**
+  - The pad stands for the remote's whole surface, 0–1000 on each axis, so where a drag starts matters, as on the remote.
+  - Moves go out at most every 16 ms. A touch only becomes a drag once it moves past touch slop, so a tap never sends touches, and a tap near an edge can't read as an arrow.
+  - Touch events share the per-device lock and reconnect logic with commands. If the socket drops mid-drag, the backend lifts the finger.
+  - The server only sends errors back, as `{detail, status}`, and keeps the socket open. The next touch reopens a dropped socket.
+  - The Android screen no longer scrolls, so the app is portrait only.
+- **Known limit:** pyatv timestamps each event when the backend sends it, not when the finger moved, so Wi-Fi jitter could make flicks uneven. If that shows up, send the phone's timestamps through, which needs pyatv's lower-level API.

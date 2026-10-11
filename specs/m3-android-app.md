@@ -26,7 +26,7 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 
 ### Screens
 
-- **Remote:** d-pad (or a swipe touchpad), select, menu, home, play/pause, next/previous and power. Haptic feedback on press. Hold-to-repeat follows M1's rules (one request in flight).
+- **Remote:** a touchpad (D18), or the d-pad as a setting; menu, home, play/pause, next/previous and power. Haptic feedback on press. Hold-to-repeat follows M1's rules (one request in flight).
 - **Devices:** the list from `/api/devices`; pick one and see whether it's paired and connected.
 - **Settings:** server URL and auth token.
 
@@ -59,6 +59,8 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 - [x] The phone's volume keys control the TV while the app is open
 - [x] Pairing in the app: core client and controller with tests, plus a pairing dialog with PIN entry
 - [x] Try it on the phone: Iris Dev against the dev server. Paired Living Room over both protocols from the app, then controlled it (2026-10-04).
+- [x] Touchpad (D18): a drag streams touches, a tap selects, and a long press holds select. The arrow buttons are a setting. The screen no longer scrolls, and the app is portrait only. Core: 11 new tests, 39 in total.
+- [ ] Try the touchpad on the phone, and tune how far a swipe moves
 
 ### Release
 
