@@ -9,8 +9,11 @@ Newest first. Add one entry per working session.
 - Shipped it to dev (`c68517c`): `:8080` serves the page and the API; the Traefik routes and dev's bare IP still work.
 - Home-lab commit `1db6e25`: stack and env changes, plus D37, INVENTORY, README and a dns.md pointer.
 
+- You merged PR #3 with a merge commit, so the tested `c68517c` is on `main`. I promoted it to prod2 unchanged. Prod answers on `:8080`, and Traefik and the other prod apps are unaffected. Home-lab commit `deploy(iris): c68517c to prod2`.
+
 **Next**
-- You: merge `m2-prod` (merge commit). Then I rebuild dev from `main`, promote to prod2, and you point the Iris (prod) app at the prod host's `:8080` and pair both Apple TVs.
+- You: point the Iris (prod) app at `http://<prod-host-ip>:8080`, then pair Bedroom and Living Room (one Companion PIN each). Pair Bedroom on dev too.
+- Push the home-lab commits; DHCP reservations for both Apple TVs; M3 release signing.
 
 ## 2026-10-04 (prod)
 
