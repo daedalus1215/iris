@@ -8,6 +8,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.graphics.drawable.Icon
 import android.media.AudioManager
 import android.media.MediaMetadata
 import android.media.VolumeProvider
@@ -89,6 +90,8 @@ class MediaControlsService : Service() {
             notification(),
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
         )
+        // A tap on one of the notification's buttons (see [button]).
+        intent?.action?.takeIf { it in BUTTONS }?.let(remote::send)
         // If Android stops it, the app starts it again the next time it opens.
         return START_NOT_STICKY
     }
@@ -133,8 +136,27 @@ class MediaControlsService : Service() {
         .setContentText(text())
         .setContentIntent(openApp())
         .setVisibility(Notification.VISIBILITY_PUBLIC)
-        .setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken))
+        .setStyle(
+            Notification.MediaStyle()
+                .setMediaSession(session.sessionToken)
+                .setShowActionsInCompactView(0, 1, 2),
+        )
+        .addAction(button(R.drawable.ic_skip_previous, "Previous", "previous"))
+        .addAction(button(R.drawable.ic_play_pause, "Play or pause", "play_pause"))
+        .addAction(button(R.drawable.ic_skip_next, "Next", "next"))
+        .addAction(button(R.drawable.ic_arrow_back, "Back", "menu"))
+        .addAction(button(R.drawable.ic_tv, "Home", "home"))
         .build()
+
+    /** Android 12 and older show these buttons; newer versions take them from the session. */
+    private fun button(icon: Int, title: String, command: String): Notification.Action {
+        val intent = Intent(this, MediaControlsService::class.java).setAction(command)
+        return Notification.Action.Builder(
+            Icon.createWithResource(this, icon),
+            title,
+            PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_IMMUTABLE),
+        ).build()
+    }
 
     private fun openApp(): PendingIntent =
         PendingIntent.getActivity(this, 0, MainActivity.intent(this), PendingIntent.FLAG_IMMUTABLE)
