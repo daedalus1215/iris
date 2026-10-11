@@ -5,9 +5,13 @@ import DeviceSelect from 'src/components/DeviceSelect/DeviceSelect.vue'
 import ScanButton from 'src/components/ScanButton/ScanButton.vue'
 import GlowButton from 'src/components/GlowButton/GlowButton.vue'
 import PairingDialog from 'src/components/PairingDialog/PairingDialog.vue'
+import TouchPad from 'src/components/TouchPad/TouchPad.vue'
 import { useRepeatingCommand } from 'src/composables/useRepeatingCommand'
+import { useTouchpad } from 'src/composables/useTouchpad'
+import type { TouchPhase } from 'src/api'
 
 const SELECTED_KEY = 'iris.selectedDevice'
+const ARROW_BUTTONS_KEY = 'iris.arrowButtons'
 // Keys from before the Python backend; the device list now comes from the server.
 const LEGACY_DEVICES_KEY = 'appletvDevices'
 const LEGACY_SELECTED_KEY = 'selectedAppleTvDevice'
@@ -30,9 +34,13 @@ const needsPairing = computed(
     selected.value !== null && !(selected.value.paired.companion && selected.value.paired.airplay),
 )
 
+// Arrow buttons in place of the touchpad.
+const arrowButtons = ref(localStorage.getItem(ARROW_BUTTONS_KEY) === 'true')
+
 watch(selectedId, (id) => {
   if (id) localStorage.setItem(SELECTED_KEY, id)
 })
+watch(arrowButtons, (arrows) => localStorage.setItem(ARROW_BUTTONS_KEY, String(arrows)))
 
 const onDevicesFound = (found: Device[]) => {
   devices.value = found
@@ -49,10 +57,10 @@ const refreshDevices = async () => {
   }
 }
 
-const send = async (command: string) => {
+const send = async (command: string, action?: string) => {
   if (!selected.value) return
   try {
-    await sendCommand(selected.value.id, command)
+    await sendCommand(selected.value.id, command, action)
     error.value = null
   } catch (e) {
     error.value = errorMessage(e)
@@ -60,6 +68,16 @@ const send = async (command: string) => {
 }
 
 const { getButtonEvents } = useRepeatingCommand(send)
+
+const touchpad = useTouchpad((message) => (error.value = message))
+watch(selectedId, touchpad.close)
+
+const touch = (phase: TouchPhase, x: number, y: number) => {
+  if (!selected.value || !ready.value) return
+  // There's no reply to a touch, so a new drag clears the last error; a failure brings it back.
+  if (phase === 'press') error.value = null
+  touchpad.touch(selected.value.id, phase, x, y)
+}
 
 onMounted(async () => {
   getHealth()
@@ -113,43 +131,52 @@ onMounted(async () => {
       <q-card flat bordered class="full-width q-elevation-2 q-card-glossy">
         <q-card-section class="bg-gradient q-pa-sm">
           <div class="column items-center q-gutter-y-sm">
+            <TouchPad
+              v-if="!arrowButtons"
+              :disabled="!ready"
+              @touch="touch"
+              @tap="send('select')"
+              @long-press="send('select', 'hold')"
+            />
             <!-- Directional Pad -->
-            <div class="row justify-center">
-              <GlowButton
-                color="secondary-gradient"
-                icon="arrow_upward"
-                :disabled="!ready"
-                v-on="getButtonEvents('up')"
-              />
-            </div>
-            <div class="row justify-center">
-              <GlowButton
-                color="secondary-gradient"
-                icon="arrow_back"
-                :disabled="!ready"
-                v-on="getButtonEvents('left')"
-              />
-              <GlowButton
-                color="secondary-gradient"
-                label="OK"
-                :disabled="!ready"
-                @click="send('select')"
-              />
-              <GlowButton
-                color="secondary-gradient"
-                icon="arrow_forward"
-                :disabled="!ready"
-                v-on="getButtonEvents('right')"
-              />
-            </div>
-            <div class="row justify-center">
-              <GlowButton
-                color="secondary-gradient"
-                icon="arrow_downward"
-                :disabled="!ready"
-                v-on="getButtonEvents('down')"
-              />
-            </div>
+            <template v-else>
+              <div class="row justify-center">
+                <GlowButton
+                  color="secondary-gradient"
+                  icon="arrow_upward"
+                  :disabled="!ready"
+                  v-on="getButtonEvents('up')"
+                />
+              </div>
+              <div class="row justify-center">
+                <GlowButton
+                  color="secondary-gradient"
+                  icon="arrow_back"
+                  :disabled="!ready"
+                  v-on="getButtonEvents('left')"
+                />
+                <GlowButton
+                  color="secondary-gradient"
+                  label="OK"
+                  :disabled="!ready"
+                  @click="send('select')"
+                />
+                <GlowButton
+                  color="secondary-gradient"
+                  icon="arrow_forward"
+                  :disabled="!ready"
+                  v-on="getButtonEvents('right')"
+                />
+              </div>
+              <div class="row justify-center">
+                <GlowButton
+                  color="secondary-gradient"
+                  icon="arrow_downward"
+                  :disabled="!ready"
+                  v-on="getButtonEvents('down')"
+                />
+              </div>
+            </template>
             <div class="row justify-center q-mt-sm">
               <GlowButton
                 color="secondary-gradient"
@@ -205,6 +232,15 @@ onMounted(async () => {
         </q-card-section>
       </q-card>
 
+      <q-toggle
+        v-model="arrowButtons"
+        label="Arrow buttons instead of the touchpad"
+        color="secondary"
+        dark
+        dense
+        class="q-mt-md text-grey-5"
+      />
+
       <PairingDialog
         v-if="selected"
         v-model="pairingOpen"
@@ -224,9 +260,12 @@ onMounted(async () => {
     box-shadow 0.3s ease;
 }
 
-.q-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+/* Only where there's a real pointer: on a phone, a tap leaves :hover stuck and the card shifts. */
+@media (hover: hover) {
+  .q-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+  }
 }
 
 .q-card-glossy {

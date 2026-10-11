@@ -24,8 +24,19 @@ export const listDevices = async () => (await api.get<Device[]>('/devices')).dat
 
 export const scanDevices = async () => (await api.post<Device[]>('/devices/scan')).data
 
-export const sendCommand = async (id: string, command: string) => {
-  await api.post(`${devicePath(id)}/commands/${command}`)
+// `action` is "hold", "tap" or "double_tap", for buttons that take one.
+export const sendCommand = async (id: string, command: string, action?: string) => {
+  await api.post(`${devicePath(id)}/commands/${command}`, action ? { action } : undefined)
+}
+
+// A finger on the Siri Remote's touch surface: down, moving, up.
+export type TouchPhase = 'press' | 'move' | 'release'
+
+// The device's touchpad: a WebSocket on the same origin, carrying {phase, x, y} in order.
+export const touchpadUrl = (id: string) => {
+  const url = new URL(`/api${devicePath(id)}/touch`, window.location.href)
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
+  return url.toString()
 }
 
 export const startPairing = async (id: string, protocol: PairingProtocol) =>
