@@ -60,10 +60,13 @@ class MainActivity : ComponentActivity() {
         localNetworkAllowed = allowed
     }
 
-    // While the app is open, a text field on the TV brings up the phone's keyboard.
+    // While the app is open, a text field on the TV brings up the phone's keyboard. The media
+    // controls start here too, as Android only lets an app start them while it's in front: after
+    // a restart, they're back once the app has been opened.
     override fun onStart() {
         super.onStart()
         viewModel.watchKeyboard()
+        MediaControlsService.sync(this)
     }
 
     // Nothing to touch or type while the app is in the background; the next drag reopens the touchpad.
