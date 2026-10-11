@@ -1,4 +1,4 @@
-import { Controller, Post } from '@nestjs/common';
+import { Controller, Post, Get } from '@nestjs/common';
 import { AppleTvService } from '../domain/apple-tv.service';
 
 @Controller('apple-tv')
@@ -33,5 +33,10 @@ export class AppleTvController {
   @Post('menu')
   async menu() {
     return this.appleTvService.menu();
+  }
+
+  @Get('scan')
+  async scan() {
+    return this.appleTvService.scan();
   }
 }
