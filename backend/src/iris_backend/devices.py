@@ -30,6 +30,8 @@ PAIRING_PROTOCOLS = {"companion": Protocol.Companion, "airplay": Protocol.AirPla
 PAIRING_TTL = 120.0
 SCAN_TIMEOUT = 5
 CONNECT_TIMEOUT = 15.0
+# After a failed connect, scan again at most this often (seconds) per device; see _connection.
+RESCAN_INTERVAL = 30.0
 
 # Errors that mean the connection is gone, so reconnecting may help.
 CONNECTION_ERRORS = (exceptions.ConnectionLostError, exceptions.ConnectionFailedError, OSError)
@@ -151,6 +153,8 @@ class DeviceManager:
         self._pairings: dict[str, _PairingSession] = {}
         self._keyboard_watchers: dict[str, set[KeyboardWatcher]] = {}
         self._touch_clocks: dict[str, _TouchClock] = {}
+        # When each device was last scanned for after a failed connect (time.monotonic).
+        self._rescanned: dict[str, float] = {}
         self._tasks: set[asyncio.Task] = set()
 
     async def start(self) -> None:
@@ -303,7 +307,22 @@ class DeviceManager:
         if not any(_has_credentials(config, p) for p in PAIRING_PROTOCOLS.values()):
             raise NotPaired(f"'{config.name}' isn't paired yet")
         started = time.perf_counter()
-        atv = await asyncio.wait_for(self._client.connect(config, self._storage), CONNECT_TIMEOUT)
+        try:
+            atv = await self._connect(config)
+        except CONNECTION_ERRORS as e:
+            # Apple TVs move their Companion port now and then, and pyatv connects to the port
+            # from the last scan, which the TV then refuses. So scan again and retry, but at most
+            # every RESCAN_INTERVAL, so a TV that's switched off doesn't cost a scan per press.
+            last = self._rescanned.get(device_id)
+            if last is not None and time.monotonic() - last < RESCAN_INTERVAL:
+                raise
+            self._rescanned[device_id] = time.monotonic()
+            log.info("connecting to %s failed (%r); scanning again", device_id, e)
+            await self.scan()
+            config = self._configs.get(device_id)
+            if config is None:
+                raise
+            atv = await self._connect(config)
         listener = _ConnectionListener(self, device_id, atv)
         atv.listener = listener
         atv.keyboard.listener = listener
@@ -311,6 +330,9 @@ class DeviceManager:
         self._listeners[device_id] = listener
         log.info("connected to %s in %.0f ms", device_id, (time.perf_counter() - started) * 1000)
         return atv
+
+    async def _connect(self, config: BaseConfig) -> AppleTV:
+        return await asyncio.wait_for(self._client.connect(config, self._storage), CONNECT_TIMEOUT)
 
     def _forget(self, device_id: str, atv: AppleTV) -> None:
         """Drop a connection, unless it has already been replaced by a newer one."""

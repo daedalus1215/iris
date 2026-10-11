@@ -90,6 +90,29 @@ def test_reconnects_after_connection_lost(client, fake):
     assert len(fake.connections) == 2
 
 
+def test_a_moved_companion_port_is_found_by_scanning_again(client, fake):
+    command(client, "up")
+    fake.connections[0].listener.connection_lost(Exception("tv slept"))
+    # The TV comes back on another port, which only a fresh scan knows.
+    fake.refused_ports.add(49153)
+    fake.configs = [
+        FakeConfig(DEVICE, port=55727),
+        FakeConfig("UNPAIRED", name="Den", paired=False),
+    ]
+
+    assert command(client, "down").status_code == 204
+    assert fake.scans == 2
+    assert fake.calls[-1] == ("remote_control.down", ())
+
+
+def test_a_tv_that_refuses_is_scanned_for_at_most_every_30_seconds(client, fake):
+    fake.refused_ports.add(49153)
+
+    assert command(client, "up").status_code == 503
+    assert command(client, "up").status_code == 503
+    assert fake.scans == 2  # the first listing, then one rescan
+
+
 def test_retries_once_when_the_connection_dropped_silently(client, fake):
     command(client, "up")
     fake.fail["remote_control.down"] = exceptions.ConnectionLostError("gone")
