@@ -1,0 +1,146 @@
+package io.github.daedalus1215.iris
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
+import android.content.Intent
+import android.content.pm.ServiceInfo
+import android.media.MediaMetadata
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
+import android.os.Bundle
+import android.os.IBinder
+import androidx.core.app.ServiceCompat
+import io.github.daedalus1215.iris.core.BackgroundRemote
+import io.github.daedalus1215.iris.core.HttpIrisClient
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+
+/**
+ * The remote in the notification shade and on the lock screen, where music apps show up: a
+ * media session for the selected Apple TV, kept alive by a foreground service while the setting
+ * is on. Its buttons work with the app closed.
+ */
+class MediaControlsService : Service() {
+    private val scope = MainScope()
+    private lateinit var settings: AppSettings
+    private lateinit var remote: BackgroundRemote
+    private lateinit var session: MediaSession
+
+    private val buttons = object : MediaSession.Callback() {
+        override fun onPlay() = remote.send("play_pause")
+
+        override fun onPause() = remote.send("play_pause")
+
+        override fun onSkipToNext() = remote.send("next")
+
+        override fun onSkipToPrevious() = remote.send("previous")
+
+        override fun onCustomAction(action: String, extras: Bundle?) {
+            if (action in BUTTONS) remote.send(action)
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        settings = AppSettings(this)
+        remote = BackgroundRemote(
+            scope,
+            client = { HttpIrisClient(settings.serverUrl, settings.token) },
+            deviceId = { settings.selectedDeviceId },
+        )
+        getSystemService(NotificationManager::class.java).createNotificationChannel(
+            NotificationChannel(CHANNEL, "Media controls", NotificationManager.IMPORTANCE_LOW).apply {
+                setShowBadge(false)
+            },
+        )
+        session = MediaSession(this, "Iris").apply {
+            setCallback(buttons)
+            setPlaybackState(playbackState())
+            setMetadata(metadata())
+            setSessionActivity(openApp())
+            isActive = true
+        }
+    }
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        ServiceCompat.startForeground(
+            this,
+            NOTIFICATION_ID,
+            notification(),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
+        )
+        // If Android stops it, the app starts it again the next time it opens.
+        return START_NOT_STICKY
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    override fun onDestroy() {
+        session.release()
+        scope.cancel()
+        super.onDestroy()
+    }
+
+    /**
+     * Always playing, since the TV doesn't say whether it is. So the middle button always
+     * shows pause, and sends play/pause either way. Back and home take the two spare buttons.
+     */
+    private fun playbackState(): PlaybackState = PlaybackState.Builder()
+        .setState(PlaybackState.STATE_PLAYING, PlaybackState.PLAYBACK_POSITION_UNKNOWN, 1f)
+        .setActions(
+            PlaybackState.ACTION_PLAY or PlaybackState.ACTION_PAUSE or PlaybackState.ACTION_PLAY_PAUSE or
+                PlaybackState.ACTION_SKIP_TO_PREVIOUS or PlaybackState.ACTION_SKIP_TO_NEXT,
+        )
+        .addCustomAction(PlaybackState.CustomAction.Builder("menu", "Back", R.drawable.ic_arrow_back).build())
+        .addCustomAction(PlaybackState.CustomAction.Builder("home", "Home", R.drawable.ic_tv).build())
+        .build()
+
+    private fun title(): String = settings.selectedDeviceName ?: getString(R.string.app_name)
+
+    private fun text(): String =
+        if (settings.selectedDeviceName == null) "Pick an Apple TV in the app" else "Apple TV"
+
+    /** Android 13 and newer draw the card from this, rather than from the notification. */
+    private fun metadata(): MediaMetadata = MediaMetadata.Builder()
+        .putString(MediaMetadata.METADATA_KEY_TITLE, title())
+        .putString(MediaMetadata.METADATA_KEY_ARTIST, text())
+        .build()
+
+    private fun notification(): Notification = Notification.Builder(this, CHANNEL)
+        .setSmallIcon(R.drawable.ic_tv)
+        .setContentTitle(title())
+        .setContentText(text())
+        .setContentIntent(openApp())
+        .setVisibility(Notification.VISIBILITY_PUBLIC)
+        .setStyle(Notification.MediaStyle().setMediaSession(session.sessionToken))
+        .build()
+
+    private fun openApp(): PendingIntent =
+        PendingIntent.getActivity(this, 0, MainActivity.intent(this), PendingIntent.FLAG_IMMUTABLE)
+
+    companion object {
+        private const val CHANNEL = "media_controls"
+        private const val NOTIFICATION_ID = 1
+
+        /** What the buttons may send. */
+        private val BUTTONS = setOf("play_pause", "previous", "next", "menu", "home")
+
+        /** Starts or stops the media controls to match the setting. Call while the app is in front. */
+        fun sync(context: Context) {
+            val intent = Intent(context, MediaControlsService::class.java)
+            if (!AppSettings(context).mediaControls) {
+                context.stopService(intent)
+                return
+            }
+            try {
+                context.startForegroundService(intent)
+            } catch (e: IllegalStateException) {
+                // Android refused because the app isn't in front after all; it'll be next time.
+            }
+        }
+    }
+}
