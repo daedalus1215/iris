@@ -19,6 +19,11 @@ class AppSettings(context: Context) {
         get() = prefs.getString(SELECTED_DEVICE, null)
         set(value) = prefs.edit { putString(SELECTED_DEVICE, value) }
 
+    /** The selected device's name, for showing outside the app. */
+    var selectedDeviceName: String?
+        get() = prefs.getString(SELECTED_DEVICE_NAME, null)
+        set(value) = prefs.edit { putString(SELECTED_DEVICE_NAME, value) }
+
     /** Arrow buttons in place of the touchpad. */
     var arrowButtons: Boolean
         get() = prefs.getBoolean(ARROW_BUTTONS, false)
@@ -28,6 +33,7 @@ class AppSettings(context: Context) {
         const val SERVER_URL = "server_url"
         const val TOKEN = "token"
         const val SELECTED_DEVICE = "selected_device"
+        const val SELECTED_DEVICE_NAME = "selected_device_name"
         const val ARROW_BUTTONS = "arrow_buttons"
     }
 }
