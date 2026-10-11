@@ -2,6 +2,27 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-11 (media controls)
+
+**Done**
+- You asked to reach the app by swiping down, the way music shows up. On branch `shade-controls`, with each commit changing a single file (D22):
+  - Core: `BackgroundRemote` sends presses from outside the app to the device picked in the app, keeps the last failure to show, and paces a held volume key. 8 new tests, 61 in total, run on this machine: JDK 21 is installed now.
+  - App: `MediaControlsService`, a media session in a foreground service. Its card has play/pause, previous, next, back and home, its title follows the selected TV, and its second line shows why a press failed. The volume keys reach the TV with the app closed.
+  - A setting turns it on (off by default), and asks to show notifications. The app starts the service each time it opens.
+  - `RemoteTileService`, a Quick Settings tile that opens the remote.
+- The app can't be built here (D10). CI ran the core tests and built both APKs from the branch, and published them to the `android-dev` pre-release. Nothing has been tried on the phone yet.
+
+**Next**
+- You: install the new APK from the `android-dev` release. In Settings, turn on "Controls in the notification shade and on the lock screen", then:
+  - swipe down and try the card's buttons, then lock the phone and try them there;
+  - close the app and press the volume keys;
+  - edit the Quick Settings panel, add the Iris Dev tile, and tap it.
+- If the volume keys do nothing with the app closed, see D22's limits: the phone may want a MediaRouter2 route as well.
+- Then open the PR for `shade-controls` and merge.
+
+**Blockers**
+- None.
+
 ## 2026-10-05 (smoother swipes)
 
 **Done**
