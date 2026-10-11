@@ -4,6 +4,7 @@ import api from '../../api'
 import DeviceSelect from 'src/components/DeviceSelect/DeviceSelect.vue'
 import ScanButton from 'src/components/ScanButton/ScanButton.vue'
 import GlowButton from 'src/components/GlowButton/GlowButton.vue'
+import { useRepeatingCommand } from 'src/composables/useRepeatingCommand'
 
 const isConnected = ref(false)
 const deviceSelect = ref()
@@ -29,26 +30,40 @@ loadSavedDevices()
 
 // Function to send commands like 'up', 'down', etc.
 const sendCommand = async (command: string) => {
+  console.log('sendCommand called with:', command, {
+    isConnected: isConnected.value,
+    deviceSelect: deviceSelect.value,
+  })
+
   if (!isConnected.value) {
     console.warn('Not connected to any Apple TV.')
     return
   }
 
   try {
+    console.log('Sending API request for command:', command, {
+      mac: deviceSelect.value?.selectedDevice,
+      protocol: deviceSelect.value?.protocol,
+    })
+
     await api.post(`/apple-tv/${command}`, {
       mac: deviceSelect.value.selectedDevice,
       protocol: deviceSelect.value.protocol,
     })
+
+    console.log('API request successful for command:', command)
   } catch (error) {
-    console.error('Failed to send command:', error)
+    console.error('Failed to send command:', command, error)
   }
 }
 
 // Function to send double select command
-const sendDoubleSelect = () => {
-  sendCommand('select')
-  setTimeout(() => sendCommand('select'), 50)
-}
+// const sendDoubleSelect = () => {
+//   sendCommand('select')
+//   setTimeout(() => sendCommand('select'), 50)
+// }
+
+const { getButtonEvents } = useRepeatingCommand(sendCommand)
 </script>
 
 <template>
@@ -91,7 +106,7 @@ const sendDoubleSelect = () => {
                 color="secondary-gradient"
                 icon="arrow_upward"
                 :disabled="!isConnected"
-                @click="sendCommand('up')"
+                v-on="getButtonEvents('up')"
               />
             </div>
             <div class="row justify-center q-mt-sm">
@@ -99,25 +114,25 @@ const sendDoubleSelect = () => {
                 color="secondary-gradient"
                 icon="arrow_back"
                 :disabled="!isConnected"
-                @click="sendCommand('left')"
+                v-on="getButtonEvents('left')"
               />
               <GlowButton
                 color="secondary-gradient"
                 label="OK"
                 :disabled="!isConnected"
-                @click="sendDoubleSelect"
+                v-on="getButtonEvents('select')"
               />
               <GlowButton
                 color="secondary-gradient"
                 icon="arrow_forward"
                 :disabled="!isConnected"
-                @click="sendCommand('right')"
+                v-on="getButtonEvents('right')"
               />
               <GlowButton
                 color="secondary-gradient"
                 icon="arrow_downward"
                 :disabled="!isConnected"
-                @click="sendCommand('down')"
+                v-on="getButtonEvents('down')"
               />
             </div>
             <div class="row justify-center q-mt-sm">
