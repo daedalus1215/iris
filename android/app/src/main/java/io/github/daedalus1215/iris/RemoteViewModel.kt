@@ -30,6 +30,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     val token: String get() = settings.token
     var arrowButtons by mutableStateOf(settings.arrowButtons)
         private set
+    var mediaControls by mutableStateOf(settings.mediaControls)
+        private set
 
     init {
         viewModelScope.launch {
@@ -71,11 +73,14 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun submitPin(pin: String) = controller.submitPin(pin)
 
-    fun saveSettings(serverUrl: String, token: String, arrowButtons: Boolean) {
+    fun saveSettings(serverUrl: String, token: String, arrowButtons: Boolean, mediaControls: Boolean) {
         settings.serverUrl = serverUrl.trim()
         settings.token = token.trim()
         settings.arrowButtons = arrowButtons
         this.arrowButtons = arrowButtons
+        settings.mediaControls = mediaControls
+        this.mediaControls = mediaControls
+        MediaControlsService.sync(getApplication())
         controller.useClient(HttpIrisClient(settings.serverUrl, settings.token))
     }
 
