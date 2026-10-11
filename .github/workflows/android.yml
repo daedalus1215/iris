@@ -34,10 +34,29 @@ jobs:
       - uses: gradle/actions/setup-gradle@v6
 
       - name: Test core
-        run: ./gradlew -p core test
+        shell: bash # with pipefail, so a failure isn't hidden by tee
+        run: ./gradlew -p core test 2>&1 | tee core-test.log
 
       - name: Build APKs
-        run: ./gradlew :app:assembleDevDebug :app:assembleProdDebug
+        shell: bash
+        run: ./gradlew :app:assembleDevDebug :app:assembleProdDebug 2>&1 | tee apk-build.log
+
+      # Failed tests and compile errors as annotations, readable on the run page without signing in.
+      - name: Report failures
+        if: failure()
+        run: |
+          cat core-test.log apk-build.log 2>/dev/null | grep -E '^(e: |ERROR:|> )' | sed 's/%/%25/g; s/^/::error::/' || true
+          python3 - <<'EOF'
+          import glob
+          import xml.etree.ElementTree as ET
+
+          for path in glob.glob("core/build/test-results/test/*.xml"):
+              for case in ET.parse(path).getroot().iter("testcase"):
+                  for problem in case.findall("failure") + case.findall("error"):
+                      text = problem.get("message") or problem.text or ""
+                      detail = " | ".join(line.strip() for line in text.splitlines()[:6])
+                      print(f"::error title={case.get('classname')}::{case.get('name')}: {detail}")
+          EOF
 
       - name: Upload APKs
         uses: actions/upload-artifact@v7
