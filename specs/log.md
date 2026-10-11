@@ -11,6 +11,7 @@ Newest first. Add one entry per working session.
   - Android: the touchpad fills the middle of the screen. A tap selects, a long press holds select, and the arrow buttons are a setting. The screen no longer scrolls, and the app is portrait only. Core: 39 tests (11 new). The app module only builds in CI (D10).
   - Web: the same touchpad, with a switch for the arrow buttons. Driven in headless Chromium, emulating a phone, against a mock backend: a tap sends `select`, a drag streams a press, moves and a release, a long press sends `select` with `hold`, and the page doesn't scroll.
   - nginx passes WebSocket upgrades through to the backend, and the dev server proxies them.
+  - CI: two runs failed on a flaky new core test. MockWebServer wouldn't shut down around a half-closed socket, about half the time on one CPU core. The test server now finishes the closing handshake: 0 failures in 30 single-core runs. CI also reports failed tests and compile errors as annotations, which show without signing in to GitHub.
 - The phone's volume buttons already control the TV in the app; I wrongly suggested that as new.
 
 **Next**
