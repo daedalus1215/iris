@@ -1,6 +1,7 @@
 package io.github.daedalus1215.iris
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 
 /** What the app remembers between launches. */
@@ -33,6 +34,17 @@ class AppSettings(context: Context) {
     var mediaControls: Boolean
         get() = prefs.getBoolean(MEDIA_CONTROLS, false)
         set(value) = prefs.edit { putBoolean(MEDIA_CONTROLS, value) }
+
+    /**
+     * Calls [onChange] on the main thread whenever a setting changes, here or through another
+     * [AppSettings], until the returned function is called. Keep that function: Android only
+     * holds on to the listener weakly.
+     */
+    fun observe(onChange: () -> Unit): () -> Unit {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> onChange() }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        return { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
 
     private companion object {
         const val SERVER_URL = "server_url"
