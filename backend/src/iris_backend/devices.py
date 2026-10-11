@@ -111,6 +111,8 @@ class DeviceManager:
         self._storage: Storage | None = None
         self._configs: dict[str, BaseConfig] = {}
         self._connections: dict[str, AppleTV] = {}
+        # pyatv holds listeners weakly, so they're kept here for as long as their connection.
+        self._listeners: dict[str, _ConnectionListener] = {}
         self._locks: dict[str, asyncio.Lock] = {}
         self._pairings: dict[str, _PairingSession] = {}
 
@@ -236,8 +238,10 @@ class DeviceManager:
             raise NotPaired(f"'{config.name}' isn't paired yet")
         started = time.perf_counter()
         atv = await asyncio.wait_for(self._client.connect(config, self._storage), CONNECT_TIMEOUT)
-        atv.listener = _ConnectionListener(self, device_id, atv)
+        listener = _ConnectionListener(self, device_id, atv)
+        atv.listener = listener
         self._connections[device_id] = atv
+        self._listeners[device_id] = listener
         log.info("connected to %s in %.0f ms", device_id, (time.perf_counter() - started) * 1000)
         return atv
 
@@ -245,8 +249,10 @@ class DeviceManager:
         """Drop a connection, unless it has already been replaced by a newer one."""
         if self._connections.get(device_id) is atv:
             del self._connections[device_id]
+            self._listeners.pop(device_id, None)
 
     def _drop(self, device_id: str) -> None:
+        self._listeners.pop(device_id, None)
         if atv := self._connections.pop(device_id, None):
             asyncio.get_running_loop().create_task(self._close(atv))
 
