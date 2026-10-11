@@ -18,7 +18,10 @@ Newest first. Add one entry per working session.
 
 **Next**
 - Merge, then ship to dev and prod2. The timing fix needs the new backend; the lift-off fix is in the apps alone.
-- You: install the new APK and try swiping both ways on the TV. If it's still not right, look at how far a swipe moves next.
+- You tried again: a swipe left still snapped right as you lifted. In 102 logged swipes, no left swipe had a single rightward step, so the snap came from the TV. Many left swipes had run off the touchpad's left edge (pinned at 0). You then noticed that swipes starting on the right side were fine, and ones starting left of the middle weren't.
+  - Fix (D21): every drag starts in the middle of the TV's touchpad and moves with the finger. Android and web, one commit each. Replayed on the web: a left swipe from near the pad's left edge and a right swipe from near its right edge both started at 500 and moved evenly.
+  - A scripted five-swipe test (`swipe_test.py` in the session scratchpad: left mid-pad, left then rest, left into the edge, right then rest, left from the centre) was prepared but not run.
+- You: install the new APK and try swiping both ways on the TV, starting anywhere on the pad. If left still snaps, run the scripted test next; if it's right, look at how far a swipe moves.
 
 **Blockers**
 - None.

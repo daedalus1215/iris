@@ -163,7 +163,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - A WebSocket keeps the events in order and cheap at 60 a second. Separate HTTP requests could arrive out of order.
   - It works: on 2026-10-04 both TVs reported the touch features as available, and a streamed drag moved the scrub bar on Living Room (M1, "Spike results").
 - **Details:**
-  - The pad stands for the remote's whole surface, 0–1000 on each axis, so where a drag starts matters, as on the remote.
+  - ~~The pad stands for the remote's whole surface, 0–1000 on each axis, so where a drag starts matters, as on the remote.~~ Replaced by D21: every drag starts in the middle.
   - Moves go out at most every 16 ms. A touch only becomes a drag once it moves past touch slop, so a tap never sends touches, and a tap near an edge can't read as an arrow.
   - Touch events share the per-device lock and reconnect logic with commands. If the socket drops mid-drag, the backend lifts the finger.
   - The server only sends errors back, as `{detail, status}`, and keeps the socket open. The next touch reopens a dropped socket.
@@ -205,3 +205,15 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - A swipe that sets out within 30° of an axis stays exactly on it, at the press's other coordinate; a more diagonal swipe stays free. The angle comes from the on-screen movement up to the press, since touchpad units are stretched to the pad's shape.
 - **Why the axis:** after the first two fixes, swipes right were better but nearly every swipe left was still bad. A log of 21 swipes showed no backward steps and even timing. But over their last third, left swipes curved 12–30° downward (a right thumb's arc), while right swipes stayed within 5°. Every swipe started within about 10° of horizontal. A Siri Remote's small touchpad hardly shows the arc; the phone's large pad does, and the TV read the drift as part of the swipe.
 - **Why not hold events back on the server to re-space them:** that adds latency to every swipe. Passing the time is what the protocol's own time field is for.
+
+### D21: Every touchpad drag starts in the middle of the TV's touchpad
+
+- **Date:** 2026-10-05
+- **Status:** Accepted
+- **Decision:** a drag no longer maps the phone pad onto the Apple TV's touchpad position for position (D18). It starts at (500, 500) and moves with the finger. The pad's width spans the touchpad's, on both axes alike.
+- **Why:**
+  - After D20, swipes that started on the right side of the pad worked, but ones that started left of the middle snapped back right as the finger lifted.
+  - The log showed nothing rightward in those swipes: no backward steps and even timing. So the TV treats touches differently depending on where they are, and the start position decided it.
+  - Starting in the middle makes where the thumb lands irrelevant, and gives left and right swipes the same room. Before, the many left swipes that started near the middle ran off the touchpad's left edge and pinned at 0. Apple's iPhone remote very likely works the same way.
+  - One scale for both axes also keeps on-screen angles true on the TV. Before, the pad's height and width were each stretched to 1000.
+- **Not done:** the scripted test (five swipes from different start points, with you watching) wasn't run. Your observation pointed at the start position first. If left swipes still misbehave, run it next; it's in the 2026-10-05 log.
