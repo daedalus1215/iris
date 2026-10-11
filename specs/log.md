@@ -2,6 +2,31 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-04 (night)
+
+**Done**
+- Pulled home-network details out of the public repo (D15):
+  - The app no longer has a built-in server address, and asks for one on first launch.
+  - Specs use placeholders, with real values in the git-ignored `LOCAL.md`.
+  - Tests use `192.0.2.x`.
+- Started M2 on branch `deploy`, following the home-lab repo's runbooks (D16):
+  - Dockerfiles for `backend/` and `web/`.
+  - Checked that a container on `docker-dev` can scan both Apple TVs over bridge networking (D8 superseded).
+  - Built and pushed `iris-backend` and `iris-web` at `ed7b9bd` with the home lab's `build-push.sh`.
+  - Home-lab commit `0084d36`, not pushed: `compose/apps/iris.yml`, dev and prod2 env entries, `lan.hosts` names, INVENTORY (Apple TVs and their MACs), README row.
+- Found that the Apple TVs' network MACs are real hardware addresses; the "randomized MAC" worry was about an AirPlay ID.
+
+**Next**
+- You:
+  - Get the SOPS age key onto this Mac, or run `./compose/ship.sh iris dev --repo …` from a machine that has it.
+  - Deploy the DNS names (`./compose/deploy-shared.sh dns`).
+  - Then pair dev with both Apple TVs through `http://iris.dev.lan`.
+- You: router change so phones resolve `.lan`; DHCP reservations for both Apple TVs.
+- Open PRs (`backend`, `android`, `deploy`), merge them with merge commits, then `./compose/ship.sh iris prod2`.
+
+**Blockers**
+- The deploy needs the SOPS age key.
+
 ## 2026-10-04 (evening)
 
 **Done**

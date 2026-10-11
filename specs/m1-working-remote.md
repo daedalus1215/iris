@@ -151,5 +151,5 @@ All configuration comes from environment variables. Nothing is hardcoded.
 ## Risks
 
 - **tvOS 26.6 vs pyatv 0.18.** A new tvOS release can break pyatv. The spike will catch this; if it happens, check pyatv's issue tracker and pin a working version.
-- **Unstable MAC.** Bedroom's MAC is locally administered, which suggests a private, randomized Wi-Fi address. If it changes, MAC-based ids and DHCP reservations break. Use pyatv's identifier, and check whether the Apple TV's address stays stable.
+- **Unstable MAC (resolved).** This was a false alarm. The locally administered value is Bedroom's AirPlay device ID, not its network MAC. Both Apple TVs have real hardware MACs, so DHCP reservations will hold. The backend still accepts any of a device's identifiers (D6).
 - **Deep sleep.** The first command after the Apple TV has been idle may be slow, or need a wake-up first.

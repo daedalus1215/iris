@@ -15,7 +15,7 @@ These can happen in any order once M1's backend exists. Until then, everything r
 | ID | Milestone | Status | Depends on | Spec |
 |---|---|---|---|---|
 | M1 | Working remote, running on this PC | In progress: everything works; merge pending | — | [m1-working-remote.md](m1-working-remote.md) |
-| M2 | Home-lab deploy (dev + prod) | Not started | M1 backend | [m2-homelab-deploy.md](m2-homelab-deploy.md) |
+| M2 | Home-lab deploy (dev + prod) | In progress: images pushed; deploy needs the age key | M1 backend | [m2-homelab-deploy.md](m2-homelab-deploy.md) |
 | M3 | Android app (native client) | In progress: first build published | M1 API | [m3-android-app.md](m3-android-app.md) |
 
 Status values: Not started · In progress · Blocked (say on what) · Done.
@@ -65,12 +65,12 @@ Real addresses for the `<…-ip>` placeholders are in `LOCAL.md` (git-ignored) a
 
 ## Open questions
 
-- [ ] Home-lab host: IP or hostname, OS, Docker version. Is it on the Apple TVs' LAN?
-- [ ] Image registry: GitHub Container Registry via Actions, or build on the home-lab host?
-- [ ] Is there a reverse proxy or local DNS in the home lab (for names like `iris.<domain>`)?
-- [ ] Auth: is LAN plus Tailscale enough, or should the API also require a token?
+- [x] Home-lab hosts: `docker-dev` and `docker-prod2`, on the same LAN as the Apple TVs (D16)
+- [x] Image registry: the home lab's `registry.lan`, through its `build-push.sh` (D16)
+- [x] Reverse proxy and DNS: the home lab's Traefik and `.lan` names. Phones still need a router change (M2).
+- [ ] Auth: LAN only with no token for now. Is that enough?
 - [ ] Can both Apple TVs get DHCP reservations? `IRIS_SCAN_HOSTS` lists their addresses, so those addresses must not change.
-- [ ] Android applicationId to replace `com.example.iris`.
+- [x] Android applicationId: `io.github.daedalus1215.iris` (D12)
 
 ## Working with these specs
 

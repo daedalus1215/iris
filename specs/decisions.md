@@ -34,7 +34,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 ### D5: One container image serves both the API and the frontend
 
 - **Date:** 2026-10-04
-- **Status:** Proposed
+- **Status:** Superseded by D16 (2026-10-04). The home lab's apps all ship a backend and a frontend image, with Traefik sending `/api` to the backend on the same host name, and its `build-push.sh` builds one image per folder. Iris follows that: `iris-backend` and `iris-web`. It's still same-origin, so there's still no CORS setup.
 - **Why:** The page and the API share an origin, so there's no CORS setup and no hardcoded API URL in the frontend. It's also one thing to deploy and version.
 - **Alternative:** separate frontend (nginx) and backend containers. That adds routing between them for no gain at this size.
 
@@ -61,7 +61,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 ### D8: The container uses host networking
 
 - **Date:** 2026-10-04
-- **Status:** Proposed
+- **Status:** Superseded by D16 (2026-10-04). Plain bridge networking works: a container on `docker-dev`'s edge network scanned and listed both Apple TVs by address. That only works because `IRIS_SCAN_HOSTS` lists them, since a multicast scan can't get out of a container. Host networking would have bypassed Traefik.
 - **Why:** Multicast scanning (mDNS) and any connections the Apple TV opens back to the server work without extra setup. The cost is that ports come from `IRIS_PORT` instead of port mappings.
 - **Revisit:** bridge networking with `IRIS_SCAN_HOSTS` set may also work; test it in M2 if host networking is a problem.
 - **Note:** the backend now scans Bedroom directly by IP (`IRIS_SCAN_HOSTS`) on this PC, which works.
@@ -124,3 +124,20 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - The app has no built-in server address. It asks on first launch, or takes one from your own `~/.gradle/gradle.properties`.
   - Test fixtures use documentation addresses (`192.0.2.x`).
 - **Not done:** older commits still contain the values. Rewriting public history and force-pushing isn't worth it for private addresses.
+
+### D16: Deploy through the home-lab repo
+
+- **Date:** 2026-10-04
+- **Status:** Accepted
+- **Decision:** Iris is deployed as an app in the home-lab repo, like its other apps:
+  - `compose/apps/iris.yml`
+  - per-environment env files
+  - `build-push.sh` and `ship.sh`, with dev on `docker-dev` and prod on `docker-prod2`
+  - Traefik and `.lan` names
+
+  This repo only provides the Dockerfiles.
+- **Why:** The home lab already has a registry, a reverse proxy, DNS, backups and a promotion flow (build once in dev, promote the same tag to prod). A separate setup for one app would duplicate all of that and drift from it.
+- **Consequences:**
+  - M2's own Compose files, Makefile targets and GHCR plan are dropped.
+  - Real addresses live in the home-lab repo, which is private, rather than here (D15).
+  - Deploys need the home lab's SOPS age key on the machine running them.
