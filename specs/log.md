@@ -15,8 +15,10 @@ Newest first. Add one entry per working session.
 - Gave Iris dev's bare-IP slot in the home lab (home-lab commit, `IRIS_HOSTS` in `dev.env`), so the phone reaches dev at `http://<dev-host-ip>` without `.lan` DNS. Prod's bare IP belongs to another app, so prod still waits for the router change.
 - The laptop backend stopped with the previous session. It isn't a service; restart it with `make run` when it's needed.
 
+- You tested Iris Dev on the phone against dev: paired Living Room over Companion and AirPlay from the app, and it works.
+
 **Next**
-- You: in Iris Dev, set the server to the dev host's bare IP, then pair Bedroom and Living Room (Companion, one PIN each).
+- You: pair Bedroom on dev from the app (one Companion PIN).
 - Deploy the DNS names (fingerprint check) and make the router change for `.lan`; then prod.
 
 ## 2026-10-04 (night)

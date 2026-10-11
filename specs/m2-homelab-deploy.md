@@ -1,6 +1,6 @@
 # M2: Home-lab deploy (dev + prod)
 
-**Status:** In progress: images built and pushed; the deploy is waiting on the SOPS age key
+**Status:** In progress: dev is live and used from the phone; prod is next
 **Depends on:** M1 backend
 **Outcome:** Iris runs on the home lab's Docker hosts as a dev and a prod environment, at `iris.dev.lan` and `iris.lan`. It's deployed the same way as the lab's other apps.
 
@@ -55,10 +55,10 @@ The home-lab repo (`~/Projects/home-lab`, private) already runs its apps as Comp
   - INVENTORY section for the Apple TVs and their MACs
   - README status row
 - [x] Images built and pushed at `ed7b9bd`
-- [ ] Deploy to dev. Needs the SOPS age key, which this Mac doesn't have: `deploy.sh` decrypts the environment's secrets on every deploy.
+- [x] Deploy to dev with `./compose/ship.sh iris dev` (the age key is now on this Mac)
 - [ ] Deploy the DNS names (`deploy-shared.sh dns`). This Mac has no `shared-docker` context and doesn't know the registry host's SSH key.
 - [x] Dev reachable from the phone without DNS: Iris holds dev's bare-IP slot in `dev.env`
-- [ ] Pair dev with both Apple TVs from the Android app (or the web remote)
+- [ ] Pair dev with both Apple TVs. Living Room is done (both protocols, from the app); Bedroom isn't yet.
 - [ ] Merge the iris PRs with merge commits, then promote to prod2 and pair prod
 - [ ] Router: forward `/lan/` to the lab's CoreDNS so phones resolve `iris.lan`
 - [ ] DHCP reservations for both Apple TVs (MACs in the home-lab INVENTORY)
