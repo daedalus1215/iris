@@ -91,11 +91,11 @@ const keyboardOpen = computed({
 const touchpad = useTouchpad((message) => (error.value = message))
 watch(selectedId, touchpad.close)
 
-const touch = (phase: TouchPhase, x: number, y: number) => {
+const touch = (phase: TouchPhase, x: number, y: number, t: number) => {
   if (!selected.value || !ready.value) return
   // There's no reply to a touch, so a new drag clears the last error; a failure brings it back.
   if (phase === 'press') error.value = null
-  touchpad.touch(selected.value.id, phase, x, y)
+  touchpad.touch(selected.value.id, phase, x, y, t)
 }
 
 onMounted(async () => {
