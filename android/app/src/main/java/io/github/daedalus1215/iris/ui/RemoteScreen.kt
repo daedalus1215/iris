@@ -76,8 +76,9 @@ private val KeyShape = RoundedCornerShape(22.dp)
 private val KeySpacing = 12.dp
 private val PadShape = RoundedCornerShape(28.dp)
 
-/** The Apple TV's touchpad runs 0 to 1000 on each axis. */
+/** The Apple TV's touchpad runs 0 to 1000 on each axis; every drag starts in the middle. */
 private const val TOUCH_RANGE = 1000
+private const val TOUCH_MIDDLE = TOUCH_RANGE / 2
 
 /** Moves go out at most this often: about 60 a second, like pyatv's own swipes. */
 private const val TOUCH_INTERVAL_MS = 16L
@@ -479,10 +480,11 @@ private fun DPad(
 /**
  * Like the Siri Remote's touch surface. A drag streams the finger to the Apple TV, which moves
  * focus with its own glide (or scrubs, during playback); a tap selects; a long press holds
- * select, for context menus. The pad stands for the remote's whole surface, so where a drag
- * starts matters, as it does on the remote. A drag that sets out along an axis stays on it (see
- * [SwipeRail]). Taps and long presses send no touches at all, so a tap near an edge can't read
- * as an arrow.
+ * select, for context menus. Every drag starts in the middle of the Apple TV's touchpad and
+ * moves with the finger, the pad's width spanning the touchpad's: the TV treats touches
+ * differently depending on where they are, and swipes that started left of the middle snapped
+ * back right as they lifted. A drag that sets out along an axis stays on it (see [SwipeRail]).
+ * Taps and long presses send no touches at all, so a tap near an edge can't read as an arrow.
  */
 @Composable
 private fun TouchPad(
@@ -535,14 +537,17 @@ private fun TouchPad(
                     val down = awaitFirstDown()
                     var at = FingerAt(down.position, down.uptimeMillis)
                     finger = at.position
-                    // Set at the press, from how the finger moved to get there.
+                    // Both set at the press: where the drag starts on screen, and its rail.
+                    var origin = Offset.Zero
                     var rail: SwipeRail? = null
                     fun send(phase: TouchPhase, sample: FingerAt) {
-                        val x = (sample.position.x / size.width * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE)
-                        val y = (sample.position.y / size.height * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE)
+                        if (phase == TouchPhase.PRESS) origin = sample.position
+                        val moved = (sample.position - origin) * (TOUCH_RANGE / size.width.toFloat())
+                        val x = (TOUCH_MIDDLE + moved.x).roundToInt().coerceIn(0, TOUCH_RANGE)
+                        val y = (TOUCH_MIDDLE + moved.y).roundToInt().coerceIn(0, TOUCH_RANGE)
                         if (phase == TouchPhase.PRESS) {
-                            val moved = sample.position - down.position
-                            rail = SwipeRail.start(moved.x, moved.y, x, y)
+                            val travelled = sample.position - down.position
+                            rail = SwipeRail.start(travelled.x, travelled.y, x, y)
                         }
                         val (railX, railY) = rail?.follow(x, y) ?: (x to y)
                         currentOnTouch(phase, railX, railY, sample.time)
