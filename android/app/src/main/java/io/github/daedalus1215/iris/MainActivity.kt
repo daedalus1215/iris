@@ -1,5 +1,6 @@
 package io.github.daedalus1215.iris
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -113,5 +114,13 @@ class MainActivity : ComponentActivity() {
         KeyEvent.KEYCODE_VOLUME_UP -> "volume_up"
         KeyEvent.KEYCODE_VOLUME_DOWN -> "volume_down"
         else -> null
+    }
+
+    companion object {
+        /** Opens the remote the way the launcher does: back where it was, if it's open already. */
+        fun intent(context: Context): Intent = Intent(context, MainActivity::class.java)
+            .setAction(Intent.ACTION_MAIN)
+            .addCategory(Intent.CATEGORY_LAUNCHER)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 }
