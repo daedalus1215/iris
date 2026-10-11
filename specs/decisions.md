@@ -169,3 +169,22 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - The server only sends errors back, as `{detail, status}`, and keeps the socket open. The next touch reopens a dropped socket.
   - The Android screen no longer scrolls, so the app is portrait only.
 - **Known limit:** pyatv timestamps each event when the backend sends it, not when the finger moved, so Wi-Fi jitter could make flicks uneven. If that shows up, send the phone's timestamps through, which needs pyatv's lower-level API.
+
+### D19: Type on the TV with the phone's keyboard, opened by the TV
+
+- **Date:** 2026-10-05
+- **Status:** Accepted
+- **Decision:**
+  - The backend watches each Apple TV's text field through pyatv's Companion keyboard, and serves it on a WebSocket, `/api/devices/{id}/keyboard`.
+  - The server sends `{focused, text}` when the socket opens and whenever a text field gains or loses focus. The client sends `{text}` to replace what's typed in the field.
+  - While the app or web page is open, it keeps that socket open for the selected TV. When a text field gets focus, a dialog opens with the phone's keyboard, starting from the field's text.
+  - Each change sends the whole text, so backspace, autocorrect and paste all work, and the TV's search results follow along as you type.
+  - Closing the dialog leaves a keyboard button until the field loses focus.
+- **Why:**
+  - Typing a search letter by letter on the TV's on-screen keyboard is slow.
+  - The TV announces focus changes itself (pyatv's keyboard listener), so the phone can offer its keyboard at the right moment, as Apple's iPhone remote does, with no polling.
+  - A socket gives those events instantly, and keeps typed text in order.
+- **Details:**
+  - The socket closes when the backend loses the connection to the Apple TV. Clients reopen it after 1 s, doubling the wait up to 30 s, until a state arrives.
+  - Errors before the first state aren't shown, since they're about watching itself and the retry covers them.
+  - pyatv holds listeners weakly, so the backend keeps each connection's listener alive itself. Before this, the connection-lost listener was collected straight away, and a lost connection only came to light on the next command's retry.
