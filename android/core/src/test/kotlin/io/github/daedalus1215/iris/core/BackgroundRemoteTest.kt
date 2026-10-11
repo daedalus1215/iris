@@ -1,6 +1,10 @@
 package io.github.daedalus1215.iris.core
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -75,5 +79,56 @@ class BackgroundRemoteTest {
         remote.clearError()
 
         assertNull(remote.error.value)
+    }
+
+    /** A client that notes when each press starts, and takes [sendTime] ms to send it. */
+    private fun TestScope.timedClient(times: MutableList<Long>, sendTime: Long = 0) =
+        object : IrisClient by FakeClient() {
+            override suspend fun send(deviceId: String, command: String, action: String?) {
+                times += currentTime
+                delay(sendTime)
+            }
+        }
+
+    /** A held volume key: Android repeats it every 40 ms or so. */
+    private fun TestScope.holdVolume(remote: BackgroundRemote, forMs: Long) {
+        repeat((forMs / 40).toInt()) {
+            remote.volume("volume_up")
+            advanceTimeBy(40)
+        }
+    }
+
+    @Test
+    fun `a held volume key sends at the app's pace`() = runTest {
+        val times = mutableListOf<Long>()
+        val remote = BackgroundRemote(this, { timedClient(times) }, { BEDROOM.id })
+
+        holdVolume(remote, forMs = 1000)
+        advanceUntilIdle()
+
+        assertEquals(listOf(0L, 160L, 320L, 480L, 640L, 800L, 960L), times)
+    }
+
+    @Test
+    fun `a slow volume press holds back the next`() = runTest {
+        val times = mutableListOf<Long>()
+        val remote = BackgroundRemote(this, { timedClient(times, sendTime = 300) }, { BEDROOM.id })
+
+        holdVolume(remote, forMs = 1000)
+        advanceUntilIdle()
+
+        assertEquals(listOf(0L, 480L, 960L), times)
+    }
+
+    @Test
+    fun `volume doesn't hold back other buttons`() = runTest {
+        val client = FakeClient()
+        val remote = BackgroundRemote(this, { client }, { BEDROOM.id })
+
+        remote.volume("volume_down")
+        remote.send("play_pause")
+        advanceUntilIdle()
+
+        assertEquals(listOf(BEDROOM.id to "volume_down", BEDROOM.id to "play_pause"), client.sent)
     }
 }
