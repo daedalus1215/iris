@@ -14,6 +14,7 @@ import io.github.daedalus1215.iris.core.TouchPhase
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
 class RemoteViewModel(application: Application) : AndroidViewModel(application) {
@@ -33,6 +34,9 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     init {
         viewModelScope.launch {
             state.map { it.selectedId }.distinctUntilChanged().collect { settings.selectedDeviceId = it }
+        }
+        viewModelScope.launch {
+            state.mapNotNull { it.selected?.name }.distinctUntilChanged().collect { settings.selectedDeviceName = it }
         }
         if (settings.serverUrl.isNotBlank()) controller.refresh()
     }
