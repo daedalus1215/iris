@@ -189,7 +189,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - Errors before the first state aren't shown, since they're about watching itself and the retry covers them.
   - pyatv holds listeners weakly, so the backend keeps each connection's listener alive itself. Before this, the connection-lost listener was collected straight away, and a lost connection only came to light on the next command's retry.
 
-### D20: Swipes keep the finger's timing, and ignore the slide back at lift-off
+### D20: Swipes keep the finger's timing and their axis, and ignore the slide back at lift-off
 
 - **Date:** 2026-10-05
 - **Status:** Accepted
@@ -202,4 +202,6 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - The backend puts each drag's press at the Companion session's present, and keeps the client's spacing for the rest. Times never go backwards.
   - pyatv has no public way to pass a time, so the backend sends the Companion `_hidT` event itself, through pyatv internals. A test fails if a pyatv upgrade changes them.
   - On release, if the unsent tail of the drag points back against it, the release goes where the drag last was, at the lift's time. A tail that keeps going is kept, so flicks keep their speed.
+  - A swipe that sets out within 30° of an axis stays exactly on it, at the press's other coordinate; a more diagonal swipe stays free. The angle comes from the on-screen movement up to the press, since touchpad units are stretched to the pad's shape.
+- **Why the axis:** after the first two fixes, swipes right were better but nearly every swipe left was still bad. A log of 21 swipes showed no backward steps and even timing. But over their last third, left swipes curved 12–30° downward (a right thumb's arc), while right swipes stayed within 5°. Every swipe started within about 10° of horizontal. A Siri Remote's small touchpad hardly shows the arc; the phone's large pad does, and the TV read the drift as part of the swipe.
 - **Why not hold events back on the server to re-space them:** that adds latency to every swipe. Passing the time is what the protocol's own time field is for.
