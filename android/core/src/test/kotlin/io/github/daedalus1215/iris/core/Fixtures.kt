@@ -43,6 +43,12 @@ class FakeClient(
     }
 
     val touchpads = mutableListOf<FakeTouchpad>()
+    val keyboards = mutableListOf<FakeKeyboard>()
+
+    override fun openKeyboard(deviceId: String, watcher: KeyboardWatcher): Keyboard {
+        failWith?.let { throw it }
+        return FakeKeyboard(deviceId, watcher).also { keyboards += it }
+    }
 
     override fun openTouchpad(deviceId: String, onError: (IrisException) -> Unit): Touchpad {
         failWith?.let { throw it }
@@ -76,6 +82,21 @@ class FakeTouchpad(val deviceId: String, val onError: (IrisException) -> Unit) :
     override fun send(phase: TouchPhase, x: Int, y: Int): Boolean {
         if (closed) return false
         events += Triple(phase, x, y)
+        return true
+    }
+
+    override fun close() {
+        closed = true
+    }
+}
+
+class FakeKeyboard(val deviceId: String, val watcher: KeyboardWatcher) : Keyboard {
+    val typed = mutableListOf<String>()
+    var closed = false
+
+    override fun setText(text: String): Boolean {
+        if (closed) return false
+        typed += text
         return true
     }
 

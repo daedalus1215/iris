@@ -162,13 +162,17 @@ class HttpIrisClientTest {
         assertEquals("""{"action":"hold"}""", server.takeRequest().body?.utf8())
     }
 
-    /** A server end of the touchpad socket that records what arrives and can talk back. */
-    private class TouchServer(private val greeting: String? = null) : WebSocketListener() {
+    /** A server end of a WebSocket that records what arrives, greets, and may hang up. */
+    private class SocketServer(
+        private vararg val greetings: String,
+        private val hangUp: Boolean = false,
+    ) : WebSocketListener() {
         val received = LinkedBlockingQueue<String>()
         val closed = CountDownLatch(1)
 
         override fun onOpen(webSocket: WebSocket, response: Response) {
-            greeting?.let { webSocket.send(it) }
+            greetings.forEach { webSocket.send(it) }
+            if (hangUp) webSocket.close(1011, "lost the connection to the Apple TV")
         }
 
         override fun onMessage(webSocket: WebSocket, text: String) {
@@ -185,16 +189,33 @@ class HttpIrisClientTest {
         }
     }
 
-    private fun Touchpad.closeAndWait(server: TouchServer) {
+    private fun Touchpad.closeAndWait(server: SocketServer) {
         close()
         assertTrue(server.closed.await(5, TimeUnit.SECONDS), "the touchpad socket didn't close")
+    }
+
+    /** Collects what a keyboard socket reports, in order. */
+    private class Watcher : KeyboardWatcher {
+        val events = LinkedBlockingQueue<Any>()
+
+        override fun onState(state: KeyboardState) {
+            events += state
+        }
+
+        override fun onError(error: IrisException) {
+            events += error.message.orEmpty()
+        }
+
+        override fun onClosed() {
+            events += "closed"
+        }
     }
 
     private fun <T> LinkedBlockingQueue<T>.next(): T? = poll(5, TimeUnit.SECONDS)
 
     @Test
     fun `the touchpad streams events in order to the device's socket, with the token`() {
-        val touchServer = TouchServer()
+        val touchServer = SocketServer()
         server.enqueue(MockResponse.Builder().webSocketUpgrade(touchServer).build())
 
         val pad = client(token = "s3cret").openTouchpad("AA:BB:CC:00:00:01") { throw it }
@@ -214,7 +235,7 @@ class HttpIrisClientTest {
 
     @Test
     fun `the server's touchpad errors reach onError`() {
-        val touchServer = TouchServer(greeting = """{"detail":"'Den' isn't paired yet","status":409}""")
+        val touchServer = SocketServer("""{"detail":"'Den' isn't paired yet","status":409}""")
         server.enqueue(MockResponse.Builder().webSocketUpgrade(touchServer).build())
         val errors = LinkedBlockingQueue<IrisException>()
 
@@ -235,5 +256,51 @@ class HttpIrisClientTest {
         assertEquals("missing or wrong token", error?.message)
         assertEquals(401, error?.status)
         assertFalse(pad.send(TouchPhase.PRESS, 0, 0))
+    }
+
+    @Test
+    fun `the keyboard reports the text field and types into it, with the token`() {
+        val keyboardServer = SocketServer("""{"focused":true,"text":"sta"}""")
+        server.enqueue(MockResponse.Builder().webSocketUpgrade(keyboardServer).build())
+        val watcher = Watcher()
+
+        val keyboard = client(token = "s3cret").openKeyboard("AA:BB:CC:00:00:01", watcher)
+        keyboard.setText("star wars")
+
+        assertEquals(KeyboardState(focused = true, text = "sta"), watcher.events.next())
+        assertEquals("""{"text":"star wars"}""", keyboardServer.received.next())
+        val request = server.takeRequest()
+        assertEquals(listOf("api", "devices", "AA:BB:CC:00:00:01", "keyboard"), request.url.pathSegments)
+        assertEquals("Bearer s3cret", request.headers["Authorization"])
+        keyboard.close()
+        assertTrue(keyboardServer.closed.await(5, TimeUnit.SECONDS), "the keyboard socket didn't close")
+        assertFalse(keyboard.setText("more"))
+        assertNull(watcher.events.poll(200, TimeUnit.MILLISECONDS), "closing it here isn't reported")
+    }
+
+    @Test
+    fun `the server's keyboard errors and hang-ups are reported`() {
+        val keyboardServer = SocketServer(
+            """{"detail":"'Den' isn't paired yet","status":409}""",
+            hangUp = true,
+        )
+        server.enqueue(MockResponse.Builder().webSocketUpgrade(keyboardServer).build())
+        val watcher = Watcher()
+
+        client().openKeyboard("DEN", watcher)
+
+        assertEquals("'Den' isn't paired yet", watcher.events.next())
+        assertEquals("closed", watcher.events.next())
+    }
+
+    @Test
+    fun `a keyboard that can't open reports why, then closes`() {
+        respond("""{"detail":"missing or wrong token"}""", code = 401)
+        val watcher = Watcher()
+
+        client().openKeyboard("AA:BB:CC:00:00:01", watcher)
+
+        assertEquals("missing or wrong token", watcher.events.next())
+        assertEquals("closed", watcher.events.next())
     }
 }
