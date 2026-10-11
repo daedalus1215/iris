@@ -622,7 +622,8 @@ private suspend fun AwaitPointerEventScope.awaitGestureStart(
 
 /**
  * Streams a drag until the finger lifts: a press where it was recognized, moves at most every
- * [TOUCH_INTERVAL_MS], and a release where it ended, even if the gesture is cut short.
+ * [TOUCH_INTERVAL_MS], and a release where it ended (see [liftOff]), even if the gesture is cut
+ * short.
  */
 private suspend fun AwaitPointerEventScope.streamDrag(
     pointer: PointerId,
@@ -630,7 +631,7 @@ private suspend fun AwaitPointerEventScope.streamDrag(
     onTouch: (TouchPhase, FingerAt) -> Unit,
 ) {
     var at = from
-    var lastSent = from.time
+    var sent = from
     onTouch(TouchPhase.PRESS, at)
     try {
         while (true) {
@@ -638,12 +639,25 @@ private suspend fun AwaitPointerEventScope.streamDrag(
             at = FingerAt(change.position, change.uptimeMillis)
             if (!change.pressed) break
             change.consume()
-            if (at.time - lastSent >= TOUCH_INTERVAL_MS) {
+            if (at.time - sent.time >= TOUCH_INTERVAL_MS) {
                 onTouch(TouchPhase.MOVE, at)
-                lastSent = at.time
+                sent = at
             }
         }
     } finally {
-        onTouch(TouchPhase.RELEASE, at)
+        onTouch(TouchPhase.RELEASE, liftOff(from.position, sent, at))
     }
+}
+
+/**
+ * Where to release a drag that went from [pressed] to [sent], the last sample sent, and lifted at
+ * [lifted]. A finger often slides back a little as it lifts, and a release there would read as a
+ * flick the other way, so a tail that points back against the drag is dropped. A tail that keeps
+ * going is kept, so a flick keeps its speed.
+ */
+private fun liftOff(pressed: Offset, sent: FingerAt, lifted: FingerAt): FingerAt {
+    val drag = sent.position - pressed
+    val tail = lifted.position - sent.position
+    val backwards = drag.x * tail.x + drag.y * tail.y < 0
+    return if (backwards) FingerAt(sent.position, lifted.time) else lifted
 }
