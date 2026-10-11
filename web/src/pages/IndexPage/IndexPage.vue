@@ -1,256 +1,31 @@
-<template>
-  <q-page class="flex flex-center">
-    <div class="column items-center q-pa-sm" style="width: 100%; max-width: 350px">
-      <!-- Scan and Device Selection with Power Buttons (Top, Centered) -->
-      <q-card flat bordered class="full-width q-mb-sm q-elevation-2 q-card-glossy">
-        <q-card-section class="bg-gradient text-center q-pa-sm">
-          <div class="row q-col-gutter-sm justify-center">
-            <q-btn
-              color="negative-gradient"
-              icon="power_settings_new"
-              @click="sendCommand('power-off')"
-              :disabled="!isConnected"
-              class="q-btn-glow"
-              unelevated
-              size="sm"
-              rounded
-            />
-            <q-btn
-              color="primary-gradient"
-              label="Scan"
-              @click="scanForDevices"
-              class="q-btn-glow"
-              unelevated
-              size="sm"
-              rounded
-            />
-            <q-btn
-              color="positive-gradient"
-              icon="power"
-              @click="sendCommand('power-on')"
-              :disabled="!isConnected"
-              class="q-btn-glow"
-              unelevated
-              size="sm"
-              rounded
-            />
-          </div>
-          <q-select
-            v-if="devices.length > 0"
-            filled
-            label="Select Device"
-            :options="devices"
-            v-model="selectedDevice"
-            emit-value
-            map-options
-            @update:model-value="onDeviceSelect"
-            class="q-mt-sm custom-select"
-            color="primary-gradient"
-            borderless
-            standout
-            style="width: 100%"
-          />
-        </q-card-section>
-      </q-card>
-
-      <!-- Main Remote Control Layout (Centered, Compact Remote Style) -->
-      <q-card flat bordered class="full-width q-elevation-2 q-card-glossy">
-        <q-card-section class="bg-gradient q-pa-sm">
-          <div class="column items-center q-gutter-y-sm">
-            <!-- Directional Pad (Compact D-pad) -->
-            <div class="row justify-center">
-              <q-btn
-                color="secondary-gradient"
-                icon="arrow_upward"
-                @click="sendCommand('up')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-            </div>
-            <div class="row justify-center q-mt-sm">
-              <q-btn
-                color="secondary-gradient"
-                icon="arrow_back"
-                @click="sendCommand('left')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-              <q-btn
-                color="secondary-gradient"
-                label="OK"
-                @click="sendCommand('select')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-              <q-btn
-                color="secondary-gradient"
-                icon="arrow_forward"
-                @click="sendCommand('right')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-              <q-btn
-                color="secondary-gradient"
-                icon="arrow_downward"
-                @click="sendCommand('down')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-            </div>
-            <div class="row justify-center q-mt-sm">
-              <q-btn
-                color="secondary-gradient"
-                label="M"
-                @click="sendCommand('menu')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-            </div>
-
-            <!-- Media Controls (Compact, Inline) -->
-            <div class="row justify-center q-mt-sm">
-              <q-btn
-                color="primary-gradient"
-                icon="skip_previous"
-                @click="sendCommand('previous')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-              <q-btn
-                color="primary-gradient"
-                icon="play_arrow"
-                @click="sendCommand('play')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-              <q-btn
-                color="primary-gradient"
-                icon="skip_next"
-                @click="sendCommand('next')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-              <q-btn
-                color="primary-gradient"
-                icon="pause"
-                @click="sendCommand('pause')"
-                :disabled="!isConnected"
-                class="q-btn-glow"
-                unelevated
-                size="sm"
-                rounded
-              />
-            </div>
-          </div>
-        </q-card-section>
-      </q-card>
-    </div>
-  </q-page>
-</template>
-
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import api from '../../api'
+import DeviceSelect from 'src/components/DeviceSelect/DeviceSelect.vue'
+import ScanButton from 'src/components/ScanButton/ScanButton.vue'
+import GlowButton from 'src/components/GlowButton/GlowButton.vue'
 
-// State for storing device list, selected device, connection status, and protocol
-const devices = ref<{ label: string; value: string }[]>([])
-const selectedDevice = ref<string | null>(null)
 const isConnected = ref(false)
-const protocol = ref<string | null>(null)
+const deviceSelect = ref()
+const devices = ref<{ label: string; value: string }[]>([])
 
-// Load saved devices from localStorage
+// Handle devices found from scan
+const onDevicesFound = (newDevices: { label: string; value: string }[]) => {
+  devices.value = newDevices
+  // Save to localStorage
+  localStorage.setItem('appletvDevices', JSON.stringify(newDevices))
+}
+
+// Load saved devices when component mounts
 const loadSavedDevices = () => {
   const savedDevices = localStorage.getItem('appletvDevices')
   if (savedDevices) {
     devices.value = JSON.parse(savedDevices)
   }
-
-  const lastSelectedDevice = localStorage.getItem('selectedAppleTvDevice')
-  if (lastSelectedDevice) {
-    selectedDevice.value = lastSelectedDevice
-  }
 }
 
-// Save devices to localStorage
-const saveDevices = () => {
-  localStorage.setItem('appletvDevices', JSON.stringify(devices.value))
-}
-
-// Save selected device
-const saveSelectedDevice = () => {
-  if (selectedDevice.value) {
-    localStorage.setItem('selectedAppleTvDevice', selectedDevice.value)
-  } else {
-    localStorage.removeItem('selectedAppleTvDevice')
-  }
-}
-
-// Function to scan for devices
-const scanForDevices = async () => {
-  try {
-    const response = await api.get('/apple-tv/scan')
-    devices.value = response.data.map((device: { name: string; mac: string }) => ({
-      label: device.name, // Display name of the device
-      value: device.mac, // Unique identifier for the device
-    }))
-    // Save to localStorage after successful scan
-    saveDevices()
-  } catch (error) {
-    console.error('Failed to scan devices:', error)
-  }
-}
-
-// Function to handle device selection, connect, and store constraints
-const onDeviceSelect = async () => {
-  if (selectedDevice.value) {
-    try {
-      // Connect to the device, you may need to fetch or calculate protocol dynamically
-      const connectionResponse = await api.post('/apple-tv/connect', {
-        mac: selectedDevice.value,
-        protocol: 'protocol_name', // Replace with actual protocol if necessary
-      })
-
-      // Assuming the response provides protocol or other constraints
-      protocol.value = connectionResponse.data.protocol // Adjust based on your backend
-      isConnected.value = true // Mark as connected
-
-      // Save selected device to localStorage
-      saveSelectedDevice()
-
-      console.log('Connected to Apple TV', selectedDevice.value, 'with protocol', protocol.value)
-    } catch (error) {
-      console.error('Failed to connect:', error)
-      isConnected.value = false
-    }
-  }
-}
+// Load saved devices on mount
+loadSavedDevices()
 
 // Function to send commands like 'up', 'down', etc.
 const sendCommand = async (command: string) => {
@@ -261,28 +36,131 @@ const sendCommand = async (command: string) => {
 
   try {
     await api.post(`/apple-tv/${command}`, {
-      mac: selectedDevice.value,
-      protocol: protocol.value, // Use the protocol after connecting
+      mac: deviceSelect.value.selectedDevice,
+      protocol: deviceSelect.value.protocol,
     })
   } catch (error) {
     console.error('Failed to send command:', error)
   }
 }
-
-// Load saved devices when component mounts
-onMounted(() => {
-  loadSavedDevices()
-  // If we have a saved device, try to connect to it
-  if (selectedDevice.value) {
-    onDeviceSelect()
-  }
-})
 </script>
+
+<template>
+  <q-page class="flex flex-center">
+    <div class="column items-center q-pa-sm" style="width: 100%; max-width: 350px">
+      <!-- Device Selection Card -->
+      <q-card flat bordered class="full-width q-mb-sm q-elevation-2 q-card-glossy">
+        <q-card-section class="bg-gradient text-center q-pa-sm">
+          <div class="row q-col-gutter-sm justify-center">
+            <GlowButton
+              color="negative-gradient"
+              icon="power_settings_new"
+              :disabled="!isConnected"
+              @click="sendCommand('power-off')"
+            />
+            <ScanButton @devices-found="onDevicesFound" />
+            <GlowButton
+              color="positive-gradient"
+              icon="power"
+              :disabled="!isConnected"
+              @click="sendCommand('power-on')"
+            />
+          </div>
+          <DeviceSelect
+            v-model:connected="isConnected"
+            :devices="devices"
+            ref="deviceSelect"
+            class="q-mt-sm"
+          />
+        </q-card-section>
+      </q-card>
+
+      <!-- Main Remote Control Layout (Centered, Compact Remote Style) -->
+      <q-card flat bordered class="full-width q-elevation-2 q-card-glossy">
+        <q-card-section class="bg-gradient q-pa-sm">
+          <div class="column items-center q-gutter-y-sm">
+            <!-- Directional Pad (Compact D-pad) -->
+            <div class="row justify-center">
+              <GlowButton
+                color="secondary-gradient"
+                icon="arrow_upward"
+                :disabled="!isConnected"
+                @click="sendCommand('up')"
+              />
+            </div>
+            <div class="row justify-center q-mt-sm">
+              <GlowButton
+                color="secondary-gradient"
+                icon="arrow_back"
+                :disabled="!isConnected"
+                @click="sendCommand('left')"
+              />
+              <GlowButton
+                color="secondary-gradient"
+                label="OK"
+                :disabled="!isConnected"
+                @click="sendCommand('select')"
+              />
+              <GlowButton
+                color="secondary-gradient"
+                icon="arrow_forward"
+                :disabled="!isConnected"
+                @click="sendCommand('right')"
+              />
+              <GlowButton
+                color="secondary-gradient"
+                icon="arrow_downward"
+                :disabled="!isConnected"
+                @click="sendCommand('down')"
+              />
+            </div>
+            <div class="row justify-center q-mt-sm">
+              <GlowButton
+                color="secondary-gradient"
+                label="M"
+                :disabled="!isConnected"
+                @click="sendCommand('menu')"
+              />
+            </div>
+
+            <!-- Media Controls (Compact, Inline) -->
+            <div class="row justify-center q-mt-sm">
+              <GlowButton
+                color="primary-gradient"
+                icon="skip_previous"
+                :disabled="!isConnected"
+                @click="sendCommand('previous')"
+              />
+              <GlowButton
+                color="primary-gradient"
+                icon="play_arrow"
+                :disabled="!isConnected"
+                @click="sendCommand('play')"
+              />
+              <GlowButton
+                color="primary-gradient"
+                icon="skip_next"
+                :disabled="!isConnected"
+                @click="sendCommand('next')"
+              />
+              <GlowButton
+                color="primary-gradient"
+                icon="pause"
+                :disabled="!isConnected"
+                @click="sendCommand('pause')"
+              />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </div>
+  </q-page>
+</template>
 
 <style scoped>
 /* Custom Styling for a "Cooler and Sexier" Look, Traditional Remote Style */
 .q-card {
-  border-radius: 20px; /* Slightly larger for better touch targets */
+  border-radius: 20px;
   transition:
     transform 0.3s ease,
     box-shadow 0.3s ease;
@@ -301,31 +179,7 @@ onMounted(() => {
 .bg-gradient {
   background: linear-gradient(135deg, #1a1a2e, #16213e);
   border-radius: 20px;
-  padding: 20px; /* Increased padding for touch comfort */
-}
-
-.q-btn {
-  border-radius: 15px; /* Larger radius for touch */
-  text-transform: uppercase;
-  font-weight: bold;
-  transition: all 0.3s ease;
-  height: 75px;
-  min-width: 80px;
-  padding: 10px 10px;
-  margin: 10px;
-}
-
-.q-btn-glow {
-  box-shadow: 0 0 15px rgba(100, 100, 255, 0.5);
-}
-
-.q-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 20px rgba(100, 100, 255, 0.7);
-}
-
-.q-btn.unelevated {
-  background: linear-gradient(45deg, #4ecdc4, #45b7d1);
+  padding: 20px;
 }
 
 .primary-gradient {
@@ -353,64 +207,6 @@ onMounted(() => {
   color: white;
 }
 
-.q-select {
-  border-radius: 15px;
-  font-weight: bold;
-  width: 100%; /* Ensure full width for touch */
-}
-
-/* Target all text elements in the select field */
-:deep(.q-field__native),
-:deep(.q-field__prefix),
-:deep(.q-field__suffix),
-:deep(.q-field__input),
-:deep(.q-field__label),
-:deep(.q-field__marginal),
-:deep(.q-field__native > div),
-:deep(.q-field__display),
-:deep(.q-field__display .q-field__native *) {
-  color: white !important;
-}
-
-/* Additional specific selectors for the selected value */
-:deep(.q-field) {
-  color: white !important;
-}
-
-:deep(.q-field__display .q-field__native) {
-  color: white !important;
-}
-
-.q-select .q-field__control {
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
-  border-radius: 15px;
-  padding: 12px;
-}
-
-/* Style for the dropdown menu */
-:deep(.q-menu) {
-  background: linear-gradient(135deg, #1a1a2e, #16213e) !important;
-  color: white !important;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-:deep(.q-item) {
-  color: white !important;
-}
-
-:deep(.q-item:hover) {
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-:deep(.q-item.q-item--active) {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
-
-.q-select .q-field__control:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-}
-
 .q-page {
   background: linear-gradient(135deg, #0a0a1a, #16213e);
 }
@@ -421,15 +217,10 @@ onMounted(() => {
   color: white;
   font-family: 'Roboto', sans-serif;
   letter-spacing: 0.5px;
-  font-size: 1.1rem; /* Slightly larger text for readability */
+  font-size: 1.1rem;
 }
 
 @media (max-width: 480px) {
-  .q-btn {
-    min-width: 70px;
-    padding: 8px 16px;
-  }
-
   .row.q-col-gutter-md.justify-center {
     flex-wrap: wrap;
   }
@@ -442,10 +233,5 @@ onMounted(() => {
   .col-12 {
     width: 90%;
   }
-}
-
-/* Custom select styling */
-.custom-select :deep(*) {
-  color: white !important;
 }
 </style>
