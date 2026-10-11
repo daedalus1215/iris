@@ -4,6 +4,9 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+// Temporary in-memory store for pairing state
+const pairingState = new Map<string, { mac: string; protocol: string }>();
+
 @Injectable()
 export class AppleTvService {
   async scan(): Promise<any[]> {
@@ -12,6 +15,61 @@ export class AppleTvService {
       return this.parseScanOutput(stdout);
     } catch (error) {
       throw new Error(`Scan failed: ${error.message}`);
+    }
+  }
+
+  async connect(mac: string, protocol: string) {
+    try {
+      // Scan for devices
+      const { stdout } = await execAsync(`atvremote scan`);
+      if (!stdout.includes(mac)) {
+        throw new Error(`Device with MAC ${mac} not found.`);
+      }
+
+      // Generate a temporary pairing ID to track this session
+      const pairingId = `${mac}-${protocol}-${Date.now()}`;
+      pairingState.set(pairingId, { mac, protocol });
+
+      // Start pairing as a detached process
+      const pairProcess = exec(
+        `atvremote --id ${mac} --protocol ${protocol} pair`,
+      );
+
+      pairProcess.unref(); // Allow the process to continue in the background
+
+      console.log('pairingId', pairingId);
+      return {
+        message: 'Code required',
+        pairingId, // Return pairing ID to be used in the next request
+      };
+    } catch (error) {
+      throw new Error(`Failed to connect: ${error.message}`);
+    }
+  }
+
+  async completePairing(pairingId: string, code: string) {
+    const state = pairingState.get(pairingId);
+    console.log('state', state);
+    if (!state) {
+      throw new Error('Invalid pairing ID or pairing has expired.');
+    }
+  
+    const { mac, protocol } = state;
+  
+    try {
+      const pairResult = await execAsync(
+        `atvremote --id ${mac} --protocol ${protocol} pair --pin ${code}`,
+      );
+  
+      if (pairResult.stdout.includes('Pairing successful')) {
+        const newCredentials = await this.getCredentials(mac, protocol);
+        pairingState.delete(pairingId); 
+        return { message: 'Pairing successful', credentials: newCredentials };
+      }
+  
+      throw new Error('Pairing failed. Incorrect code?');
+    } catch (error) {
+      throw new Error(`Failed to complete pairing: ${error.message}`);
     }
   }
 
@@ -40,27 +98,42 @@ export class AppleTvService {
     return devices;
   }
 
-  async up() {
-    // Logic to send "up" command to Apple TV
+  private async getCredentials(mac: string, protocol: string) {
+    try {
+      const { stdout } = await execAsync(
+        `atvremote --id ${mac} --protocol ${protocol} credentials`,
+      );
+      return stdout.trim() || null;
+    } catch {
+      return null;
+    }
   }
 
-  async down() {
-    // Logic to send "down" command to Apple TV
+  async up(mac: string) {
+    return this.executeCommand(mac, 'up');
   }
 
-  async left() {
-    // Logic to send "left" command to Apple TV
+  async down(mac: string) {
+    return this.executeCommand(mac, 'down');
   }
 
-  async right() {
-    // Logic to send "right" command to Apple TV
+  async left(mac: string) {
+    return this.executeCommand(mac, 'left');
   }
 
-  async select() {
-    // Logic to send "select" command to Apple TV
+  async right(mac: string) {
+    return this.executeCommand(mac, 'right');
   }
 
-  async menu() {
-    // Logic to send "menu" command to Apple TV
+  async select(mac: string) {
+    return this.executeCommand(mac, 'select');
+  }
+
+  async menu(mac: string) {
+    return this.executeCommand(mac, 'menu');
+  }
+
+  private async executeCommand(mac: string, command: string) {
+    return execAsync(`atvremote --id ${mac} ${command}`);
   }
 }
