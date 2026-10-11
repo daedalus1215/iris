@@ -21,6 +21,7 @@ import io.github.daedalus1215.iris.core.BackgroundRemote
 import io.github.daedalus1215.iris.core.HttpIrisClient
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
 
 /**
  * The remote in the notification shade and on the lock screen, where music apps show up: a
@@ -32,6 +33,7 @@ class MediaControlsService : Service() {
     private lateinit var settings: AppSettings
     private lateinit var remote: BackgroundRemote
     private lateinit var session: MediaSession
+    private var stopObserving: () -> Unit = {}
 
     private val buttons = object : MediaSession.Callback() {
         override fun onPlay() = remote.send("play_pause")
@@ -81,6 +83,12 @@ class MediaControlsService : Service() {
             setSessionActivity(openApp())
             isActive = true
         }
+        // Follow the app's choice of device and server, and say why a press failed.
+        stopObserving = settings.observe {
+            remote.clearError()
+            update()
+        }
+        scope.launch { remote.error.collect { update() } }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -99,6 +107,7 @@ class MediaControlsService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
+        stopObserving()
         session.release()
         scope.cancel()
         super.onDestroy()
@@ -121,8 +130,13 @@ class MediaControlsService : Service() {
 
     private fun title(): String = settings.selectedDeviceName ?: getString(R.string.app_name)
 
-    private fun text(): String =
-        if (settings.selectedDeviceName == null) "Pick an Apple TV in the app" else "Apple TV"
+    private fun text(): String = remote.error.value
+        ?: if (settings.selectedDeviceName == null) "Pick an Apple TV in the app" else "Apple TV"
+
+    private fun update() {
+        session.setMetadata(metadata())
+        getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification())
+    }
 
     /** Android 13 and newer draw the card from this, rather than from the notification. */
     private fun metadata(): MediaMetadata = MediaMetadata.Builder()
