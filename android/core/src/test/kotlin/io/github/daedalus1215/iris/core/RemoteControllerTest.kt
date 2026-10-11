@@ -3,6 +3,7 @@ package io.github.daedalus1215.iris.core
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -196,6 +197,129 @@ class RemoteControllerTest {
         controller.touch(TouchPhase.PRESS, 500, 500)
 
         assertEquals(emptyList(), client.touchpads)
+    }
+
+    @Test
+    fun `the keyboard follows the selected device's text field once its devices load`() = runTest {
+        val client = FakeClient()
+        val controller = RemoteController(client, this)
+
+        controller.watchKeyboard()
+        assertEquals(emptyList(), client.keyboards)
+        controller.refresh()
+        advanceUntilIdle()
+        val keyboard = client.keyboards.single()
+        keyboard.watcher.onState(KeyboardState(focused = true, text = "sta"))
+        runCurrent()
+
+        assertEquals(BEDROOM.id, keyboard.deviceId)
+        assertEquals(KeyboardState(focused = true, text = "sta"), controller.state.value.keyboard)
+    }
+
+    @Test
+    fun `typing replaces the text on the TV`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
+        controller.watchKeyboard()
+        client.keyboards.single().watcher.onState(KeyboardState(focused = true, text = ""))
+        runCurrent()
+
+        controller.type("s")
+        controller.type("st")
+
+        assertEquals(listOf("s", "st"), client.keyboards.single().typed)
+        assertEquals("st", controller.state.value.keyboard?.text)
+    }
+
+    @Test
+    fun `a dropped keyboard reconnects, waiting longer each time until it works`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
+        controller.watchKeyboard()
+
+        client.keyboards[0].watcher.onClosed()
+        runCurrent()
+        assertTrue(client.keyboards[0].closed)
+        advanceTimeBy(999)
+        assertEquals(1, client.keyboards.size)
+        advanceTimeBy(2)
+        assertEquals(2, client.keyboards.size)
+
+        client.keyboards[1].watcher.onClosed()
+        runCurrent()
+        advanceTimeBy(1999)
+        assertEquals(2, client.keyboards.size)
+        advanceTimeBy(2)
+        assertEquals(3, client.keyboards.size)
+
+        // A state means it works again, so the next drop waits the shortest time.
+        client.keyboards[2].watcher.onState(KeyboardState(focused = false))
+        client.keyboards[2].watcher.onClosed()
+        runCurrent()
+        assertNull(controller.state.value.keyboard)
+        advanceTimeBy(1001)
+        assertEquals(4, client.keyboards.size)
+    }
+
+    @Test
+    fun `switching devices moves the keyboard, and the old one's news is ignored`() = runTest {
+        val den = DEN_UNPAIRED.copy(paired = Paired(companion = true, airplay = false))
+        val client = FakeClient(devices = listOf(BEDROOM, den))
+        val controller = loaded(client, selectedId = BEDROOM.id)
+        controller.watchKeyboard()
+        val old = client.keyboards.single()
+
+        controller.select(den.id)
+        old.watcher.onState(KeyboardState(focused = true, text = "late"))
+        old.watcher.onClosed()
+        advanceUntilIdle()
+
+        assertTrue(old.closed)
+        assertEquals(listOf(BEDROOM.id, den.id), client.keyboards.map { it.deviceId })
+        assertNull(controller.state.value.keyboard)
+    }
+
+    @Test
+    fun `keyboard errors show only once it's watching`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
+        controller.watchKeyboard()
+        val keyboard = client.keyboards.single()
+
+        keyboard.watcher.onError(IrisException("Apple TV unreachable"))
+        runCurrent()
+        assertNull(controller.state.value.error)
+
+        keyboard.watcher.onState(KeyboardState(focused = true, text = ""))
+        keyboard.watcher.onError(IrisException("Apple TV unreachable"))
+        runCurrent()
+        assertEquals("Apple TV unreachable", controller.state.value.error)
+    }
+
+    @Test
+    fun `stopping closes the keyboard and forgets the text field`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
+        controller.watchKeyboard()
+        client.keyboards.single().watcher.onState(KeyboardState(focused = true, text = "x"))
+        runCurrent()
+
+        controller.stopWatchingKeyboard()
+        controller.type("ignored")
+
+        assertTrue(client.keyboards.single().closed)
+        assertEquals(emptyList(), client.keyboards.single().typed)
+        assertNull(controller.state.value.keyboard)
+    }
+
+    @Test
+    fun `the keyboard isn't watched for an unpaired device`() = runTest {
+        val client = FakeClient(devices = listOf(DEN_UNPAIRED))
+        val controller = loaded(client)
+
+        controller.watchKeyboard()
+
+        assertEquals(emptyList(), client.keyboards)
     }
 
     @Test
