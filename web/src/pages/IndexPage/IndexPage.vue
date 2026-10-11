@@ -44,7 +44,7 @@
             emit-value
             map-options
             @update:model-value="onDeviceSelect"
-            class="q-mt-sm"
+            class="q-mt-sm custom-select"
             color="primary-gradient"
             borderless
             standout
@@ -359,11 +359,52 @@ onMounted(() => {
   width: 100%; /* Ensure full width for touch */
 }
 
+/* Target all text elements in the select field */
+:deep(.q-field__native),
+:deep(.q-field__prefix),
+:deep(.q-field__suffix),
+:deep(.q-field__input),
+:deep(.q-field__label),
+:deep(.q-field__marginal),
+:deep(.q-field__native > div),
+:deep(.q-field__display),
+:deep(.q-field__display .q-field__native *) {
+  color: white !important;
+}
+
+/* Additional specific selectors for the selected value */
+:deep(.q-field) {
+  color: white !important;
+}
+
+:deep(.q-field__display .q-field__native) {
+  color: white !important;
+}
+
 .q-select .q-field__control {
   background: rgba(255, 255, 255, 0.1) !important;
-  color: white;
+  color: white !important;
   border-radius: 15px;
   padding: 12px;
+}
+
+/* Style for the dropdown menu */
+:deep(.q-menu) {
+  background: linear-gradient(135deg, #1a1a2e, #16213e) !important;
+  color: white !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+:deep(.q-item) {
+  color: white !important;
+}
+
+:deep(.q-item:hover) {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+:deep(.q-item.q-item--active) {
+  background: rgba(255, 255, 255, 0.2) !important;
 }
 
 .q-select .q-field__control:hover {
@@ -401,5 +442,10 @@ onMounted(() => {
   .col-12 {
     width: 90%;
   }
+}
+
+/* Custom select styling */
+.custom-select :deep(*) {
+  color: white !important;
 }
 </style>
