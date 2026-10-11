@@ -1,6 +1,10 @@
 package io.github.daedalus1215.iris.ui
 
+import android.Manifest
+import android.os.Build
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -179,13 +183,21 @@ fun RemoteScreen(
         }
     }
 
+    // The media controls are a notification, so turning them on asks to show notifications.
+    // They start whatever the answer, as Android exempts media notifications.
+    val askForNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     if (showSettings) {
         SettingsDialog(
             serverUrl = viewModel.serverUrl,
             token = viewModel.token,
             arrowButtons = viewModel.arrowButtons,
-            onSave = { url, token, arrowButtons ->
-                viewModel.saveSettings(url, token, arrowButtons)
+            mediaControls = viewModel.mediaControls,
+            onSave = { url, token, arrowButtons, mediaControls ->
+                val turnedOn = mediaControls && !viewModel.mediaControls
+                if (turnedOn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                viewModel.saveSettings(url, token, arrowButtons, mediaControls)
                 showSettings = false
             },
             onDismiss = { showSettings = false },
