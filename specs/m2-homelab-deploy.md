@@ -51,6 +51,7 @@ This assumes GitHub Container Registry, which is still an open question.
 ### Networking requirements
 
 - **Home-lab host to Apple TV.** The simplest setup is the same subnet as the Apple TV (172.16.0.0/24) with no firewall between them. Across VLANs, allow the host to reach the Apple TV on all TCP ports (AirPlay negotiates extra ports beyond 7000) and on UDP 5353 for scanning. Also set `IRIS_SCAN_HOSTS`, because multicast scans won't cross VLANs.
+- **Scanning and the host firewall.** Apple TVs answer a multicast scan by replying directly to the scanning host (from UDP 5353 to the scanner's port). A default-deny firewall such as this PC's ufw drops those replies, so a multicast scan finds nothing. Scanning listed addresses (`IRIS_SCAN_HOSTS`) works through the firewall, because the replies count as answers to requests the host sent. Prefer `IRIS_SCAN_HOSTS`, or allow `udp from <LAN> port 5353` on the host.
 - **Phone to host.** On ports 8080 and 8081 over home Wi-Fi, and through Tailscale when away (the host joins the tailnet). Open these ports in the host's firewall, as this PC's ufw needed.
 - **Optional:** reverse-proxy hostnames such as `iris.<domain>` and `iris-dev.<domain>` with HTTPS. HTTPS also lets the web remote install as a home-screen app (PWA).
 

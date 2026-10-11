@@ -14,8 +14,11 @@ Newest first. Add one entry per working session.
 
 - First install on the phone: "no connection". The phone's requests never reached the backend. Cause: Android 17 blocks apps targeting API 37 from reaching the local network unless they hold the new `ACCESS_LOCAL_NETWORK` permission. The app now asks for it.
 
+- Found the second Apple TV, "Living Room" (`172.16.0.164`, Apple TV 4K gen 2). A multicast scan found nothing, because ufw drops the Apple TVs' direct replies to it (logged as UFW BLOCK from source port 5353). Added both addresses to `IRIS_SCAN_HOSTS` in the local `backend/.env`; the backend now lists both. Living Room isn't paired yet.
+
 **Next**
 - You: reinstall Iris Dev from the release page, allow "Nearby devices", and try it against this PC's backend.
+- You: pair Living Room through the web remote. This is the first real use of the pairing dialog.
 - You: run `gh auth login`, so PRs can be opened from here, and so CI logs can be read if a build fails.
 - Open PRs: `backend` into `main` (M1), then `android`.
 
