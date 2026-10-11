@@ -67,11 +67,17 @@ let sentAt: Point = { x: 0, y: 0 }
 let lastSent = 0
 let longPressTimer: number | undefined
 
+// Every drag starts in the middle of the Apple TV's touchpad and moves with the finger, the
+// pad's width spanning the touchpad's. The TV treats touches differently depending on where
+// they are, and swipes that started left of the middle snapped back right as they lifted.
+const TOUCH_MIDDLE = TOUCH_RANGE / 2
+let origin: Point = { x: 0, y: 0 } // where the drag's press was, on screen
+
 const toTv = (point: Point) => {
-  const rect = pad.value!.getBoundingClientRect()
-  const scale = (offset: number, length: number) =>
-    Math.min(TOUCH_RANGE, Math.max(0, Math.round((offset / length) * TOUCH_RANGE)))
-  return [scale(point.x - rect.left, rect.width), scale(point.y - rect.top, rect.height)] as const
+  const scale = TOUCH_RANGE / pad.value!.getBoundingClientRect().width
+  const along = (offset: number) =>
+    Math.min(TOUCH_RANGE, Math.max(0, Math.round(TOUCH_MIDDLE + offset * scale)))
+  return [along(point.x - origin.x), along(point.y - origin.y)] as const
 }
 
 // Keeps a swipe on the axis it set out along. A thumb sweeps in an arc, so a swipe that starts
@@ -83,8 +89,7 @@ let rail: { axis: 'horizontal' | 'vertical' | null; pressTv: readonly [number, n
   pressTv: [0, 0],
 }
 
-// Set at the press, from how the finger moved on screen to get there (touchpad units are
-// stretched to the pad's shape, so the angle comes from screen distances).
+// Set at the press, from how the finger moved on screen to get there.
 const startRail = (moved: Point, pressTv: readonly [number, number]) => {
   const angle = (Math.atan2(Math.abs(moved.y), Math.abs(moved.x)) * 180) / Math.PI
   const axis =
@@ -134,6 +139,7 @@ const onMove = (event: PointerEvent) => {
     if (Math.hypot(last.x - start.x, last.y - start.y) <= SLOP_PX) return
     window.clearTimeout(longPressTimer)
     mode = 'drag'
+    origin = last
     const pressTv = toTv(last)
     startRail({ x: last.x - start.x, y: last.y - start.y }, pressTv)
     emit('touch', 'press', ...pressTv, lastTime)
