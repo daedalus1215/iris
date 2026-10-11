@@ -2,6 +2,16 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-04 (direct port)
+
+**Done**
+- You'd rather not change the router, so phones now reach Iris on a port of its own (D17, home-lab D37). `web/nginx.conf` forwards `/api` to the backend, and the home lab publishes the web container on 8080.
+- Shipped it to dev (`c68517c`): `:8080` serves the page and the API; the Traefik routes and dev's bare IP still work.
+- Home-lab commit `1db6e25`: stack and env changes, plus D37, INVENTORY, README and a dns.md pointer.
+
+**Next**
+- You: merge `m2-prod` (merge commit). Then I rebuild dev from `main`, promote to prod2, and you point the Iris (prod) app at the prod host's `:8080` and pair both Apple TVs.
+
 ## 2026-10-04 (prod)
 
 **Done**

@@ -32,9 +32,12 @@ The home-lab repo (`~/Projects/home-lab`, private) already runs its apps as Comp
 
 ### Reaching it from the phone
 
-- Phones don't resolve `.lan` names yet. The router hands out its own resolver, which doesn't forward `.lan`. The home-lab DNS runbook's fix is one LuCI change on the router that forwards `/lan/` to the lab's CoreDNS.
-- Until then, test from a laptop browser, where `.lan` resolves.
-- In the Android app, set the server address to `http://iris.lan` (or `http://iris.dev.lan` for the dev build) once the router forwards `.lan`.
+Phones can't resolve `.lan` names, and the router is staying as it is. So the `web` container is also published on port 8080 of each host, outside Traefik. Its nginx forwards `/api` to the backend, so that one port serves the whole remote (D17, home-lab D37).
+
+| | Phone (browser or Android app) | Laptop |
+|---|---|---|
+| prod | `http://<prod-host-ip>:8080` | `iris.lan` |
+| dev | `http://<dev-host-ip>:8080`, or `http://<dev-host-ip>` | `iris.dev.lan` |
 
 ## Tasks
 
@@ -61,9 +64,10 @@ The home-lab repo (`~/Projects/home-lab`, private) already runs its apps as Comp
 - [ ] Pair dev with both Apple TVs. Living Room is done (both protocols, from the app); Bedroom isn't yet.
 - [x] Merged into `main` (PR #2), rebuilt dev from `main` (`07fd521`), promoted to prod2. Both run the same image digest.
 - [ ] Pair prod with both Apple TVs (one Companion PIN each, from the app once the phone can reach `iris.lan`)
-- [ ] Router: forward `/lan/` to the lab's CoreDNS so phones resolve `iris.lan`
+- [x] Phones reach Iris without `.lan` names: port 8080 on each host (D17). Verified on dev.
+- [ ] Promote the direct port to prod2: merge `m2-prod`, rebuild dev from `main`, then `ship.sh iris prod2`
 - [ ] DHCP reservations for both Apple TVs (MACs in the home-lab INVENTORY)
-- [ ] Point the Android app at `http://iris.lan`
+- [ ] Point the Iris (prod) app at `http://<prod-host-ip>:8080`, then pair both Apple TVs
 
 ## Acceptance criteria
 
@@ -71,7 +75,7 @@ The home-lab repo (`~/Projects/home-lab`, private) already runs its apps as Comp
 - [ ] Each environment is paired with both Apple TVs and controls them.
 - [ ] prod2 runs the exact image tag that dev tested (promoted, not rebuilt).
 - [ ] Prod comes back on its own after a host reboot and keeps its pairings.
-- [ ] The phone reaches `iris.lan` from both the browser and the Android app.
+- [ ] The phone reaches prod from both the browser and the Android app (the direct port).
 - [ ] Rolling back prod takes one command: set `IRIS_TAG` back and ship again.
 
 ## Open questions
