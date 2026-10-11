@@ -1,0 +1,61 @@
+name: Android
+
+on:
+  push:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # to publish the dev build release
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Test core
+        run: ./gradlew -p core test
+
+      - name: Build APKs
+        run: ./gradlew :app:assembleDevDebug :app:assembleProdDebug
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v7
+        with:
+          name: iris-apks
+          path: android/app/build/outputs/apk/*/debug/*.apk
+
+      # One rolling pre-release, so the phone can always install the newest build from the same page.
+      - name: Publish the dev build release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/dev/debug/app-dev-debug.apk iris-dev.apk
+          cp app/build/outputs/apk/prod/debug/app-prod-debug.apk iris-prod.apk
+          gh release delete android-dev --yes --cleanup-tag || true
+          gh release create android-dev iris-dev.apk iris-prod.apk \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Android dev build" \
+            --notes "Built from \`$GITHUB_REF_NAME\` at ${GITHUB_SHA::7}. On the phone, tap an APK to download and install it. Iris Dev and Iris can be installed side by side."
