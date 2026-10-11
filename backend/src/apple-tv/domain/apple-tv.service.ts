@@ -144,16 +144,8 @@ export class AppleTvService {
     return this.executeCommand(mac, 'menu');
   }
 
-  async click(mac: string) {
-    return this.executeCommand(mac, 'click');
-  }
-
   async home(mac: string) {
     return this.executeCommand(mac, 'home');
-  }
-
-  async homeHold(mac: string) {
-    return this.executeCommand(mac, 'home_hold');
   }
 
   async play(mac: string) {
@@ -172,24 +164,12 @@ export class AppleTvService {
     return this.executeCommand(mac, 'previous');
   }
 
-  async volumeUp(mac: string) {
-    return this.executeCommand(mac, 'volume_up');
-  }
-
-  async volumeDown(mac: string) {
-    return this.executeCommand(mac, 'volume_down');
-  }
-
   async powerOff(mac: string) {
     return this.executeCommand(mac, 'turn_off');
   }
 
   async powerOn(mac: string) {
     return this.executeCommand(mac, 'turn_on');
-  }
-
-  async sleep(mac: string) {
-    return this.executeCommand(mac, 'sleep');
   }
 
   private async executeCommand(mac: string, command: string) {
