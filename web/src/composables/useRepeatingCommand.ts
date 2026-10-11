@@ -1,44 +1,28 @@
-import { ref } from 'vue'
-
 type CommandFunction = (command: string) => Promise<void>
 
+// Like a held key: one press, a pause, then steady repeats until release.
+const INITIAL_DELAY_MS = 400
+const REPEAT_INTERVAL_MS = 150
+
+const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
 export const useRepeatingCommand = (sendCommand: CommandFunction) => {
-  const holdInterval = ref<number | null>(null)
-  const speedupTimeout = ref<number | null>(null)
+  // Each press gets a new generation; releasing bumps it, which ends that press's loop.
+  let generation = 0
 
-  const startRepeating = (command: string) => {
-    console.log('startRepeating called with:', command)
-    // Send first command immediately
-    sendCommand(command)
-
-    // Start repeating every 500ms
-    holdInterval.value = window.setInterval(() => {
-      console.log('Interval sending command:', command)
-      sendCommand(command)
-    }, 500)
-
-    // Speed up after 5 seconds
-    speedupTimeout.value = window.setTimeout(() => {
-      if (holdInterval.value) {
-        clearInterval(holdInterval.value)
-        holdInterval.value = window.setInterval(() => {
-          console.log('Fast interval sending command:', command)
-          sendCommand(command)
-        }, 100)
-      }
-    }, 5000)
+  const startRepeating = async (command: string) => {
+    const press = ++generation
+    // Each send is awaited, so at most one request is in flight and nothing queues up.
+    await sendCommand(command)
+    await sleep(INITIAL_DELAY_MS)
+    while (press === generation) {
+      await sendCommand(command)
+      await sleep(REPEAT_INTERVAL_MS)
+    }
   }
 
   const stopRepeating = () => {
-    console.log('stopRepeating called')
-    if (holdInterval.value) {
-      clearInterval(holdInterval.value)
-      holdInterval.value = null
-    }
-    if (speedupTimeout.value) {
-      clearTimeout(speedupTimeout.value)
-      speedupTimeout.value = null
-    }
+    generation++
   }
 
   return {
@@ -48,9 +32,10 @@ export const useRepeatingCommand = (sendCommand: CommandFunction) => {
       mouseleave: stopRepeating,
       touchstart: (e: Event) => {
         e.preventDefault()
-        startRepeating(command)
+        void startRepeating(command)
       },
       touchend: stopRepeating,
+      touchcancel: stopRepeating,
     }),
   }
 }

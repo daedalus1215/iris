@@ -1,74 +1,81 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import api from '../../api'
+import { computed, onMounted, ref, watch } from 'vue'
+import { canControl, errorMessage, getHealth, listDevices, sendCommand, type Device } from 'src/api'
 import DeviceSelect from 'src/components/DeviceSelect/DeviceSelect.vue'
 import ScanButton from 'src/components/ScanButton/ScanButton.vue'
 import GlowButton from 'src/components/GlowButton/GlowButton.vue'
+import PairingDialog from 'src/components/PairingDialog/PairingDialog.vue'
 import { useRepeatingCommand } from 'src/composables/useRepeatingCommand'
 
-const isConnected = ref(false)
-const deviceSelect = ref()
-const devices = ref<{ label: string; value: string }[]>([])
+const SELECTED_KEY = 'iris.selectedDevice'
+// Keys from before the Python backend; the device list now comes from the server.
+const LEGACY_DEVICES_KEY = 'appletvDevices'
+const LEGACY_SELECTED_KEY = 'selectedAppleTvDevice'
 
-// Handle devices found from scan
-const onDevicesFound = (newDevices: { label: string; value: string }[]) => {
-  devices.value = newDevices
-  // Save to localStorage
-  localStorage.setItem('appletvDevices', JSON.stringify(newDevices))
+const devices = ref<Device[]>([])
+const selectedId = ref<string | null>(
+  localStorage.getItem(SELECTED_KEY) ?? localStorage.getItem(LEGACY_SELECTED_KEY),
+)
+localStorage.removeItem(LEGACY_DEVICES_KEY)
+localStorage.removeItem(LEGACY_SELECTED_KEY)
+
+const env = ref<string | null>(null)
+const error = ref<string | null>(null)
+const pairingOpen = ref(false)
+
+const selected = computed(() => devices.value.find((d) => d.id === selectedId.value) ?? null)
+const ready = computed(() => selected.value !== null && canControl(selected.value))
+const needsPairing = computed(
+  () =>
+    selected.value !== null && !(selected.value.paired.companion && selected.value.paired.airplay),
+)
+
+watch(selectedId, (id) => {
+  if (id) localStorage.setItem(SELECTED_KEY, id)
+})
+
+const onDevicesFound = (found: Device[]) => {
+  devices.value = found
+  error.value = null
+  const [only] = found
+  if (!selected.value && only && found.length === 1) selectedId.value = only.id
 }
 
-// Load saved devices when component mounts
-const loadSavedDevices = () => {
-  const savedDevices = localStorage.getItem('appletvDevices')
-  if (savedDevices) {
-    devices.value = JSON.parse(savedDevices)
-  }
-}
-
-// Load saved devices on mount
-loadSavedDevices()
-
-// Function to send commands like 'up', 'down', etc.
-const sendCommand = async (command: string) => {
-  console.log('sendCommand called with:', command, {
-    isConnected: isConnected.value,
-    deviceSelect: deviceSelect.value,
-  })
-
-  if (!isConnected.value) {
-    console.warn('Not connected to any Apple TV.')
-    return
-  }
-
+const refreshDevices = async () => {
   try {
-    console.log('Sending API request for command:', command, {
-      mac: deviceSelect.value?.selectedDevice,
-      protocol: deviceSelect.value?.protocol,
-    })
-
-    await api.post(`/apple-tv/${command}`, {
-      mac: deviceSelect.value.selectedDevice,
-      protocol: deviceSelect.value.protocol,
-    })
-
-    console.log('API request successful for command:', command)
-  } catch (error) {
-    console.error('Failed to send command:', command, error)
+    onDevicesFound(await listDevices())
+  } catch (e) {
+    error.value = errorMessage(e)
   }
 }
 
-// Function to send double select command
-// const sendDoubleSelect = () => {
-//   sendCommand('select')
-//   setTimeout(() => sendCommand('select'), 50)
-// }
+const send = async (command: string) => {
+  if (!selected.value) return
+  try {
+    await sendCommand(selected.value.id, command)
+    error.value = null
+  } catch (e) {
+    error.value = errorMessage(e)
+  }
+}
 
-const { getButtonEvents } = useRepeatingCommand(sendCommand)
+const { getButtonEvents } = useRepeatingCommand(send)
+
+onMounted(async () => {
+  getHealth()
+    .then((health) => (env.value = health.env))
+    .catch(() => {})
+  await refreshDevices()
+})
 </script>
 
 <template>
   <q-page class="flex flex-center">
     <div class="column items-center q-pa-sm" style="width: 100%; max-width: 350px">
+      <q-badge v-if="env && env !== 'prod'" color="orange" class="q-mb-sm">
+        {{ env.toUpperCase() }}
+      </q-badge>
+
       <!-- Device Selection Card -->
       <q-card flat bordered class="full-width q-mb-sm q-elevation-2 q-card-glossy">
         <q-card-section class="bg-gradient text-center q-pa-sm">
@@ -76,23 +83,29 @@ const { getButtonEvents } = useRepeatingCommand(sendCommand)
             <GlowButton
               color="negative-gradient"
               icon="power_settings_new"
-              :disabled="!isConnected"
-              @click="sendCommand('power-off')"
+              :disabled="!ready"
+              @click="send('turn_off')"
             />
-            <ScanButton @devices-found="onDevicesFound" />
+            <ScanButton @devices-found="onDevicesFound" @error="(message) => (error = message)" />
             <GlowButton
               color="positive-gradient"
               icon="power"
-              :disabled="!isConnected"
-              @click="sendCommand('power-on')"
+              :disabled="!ready"
+              @click="send('turn_on')"
             />
           </div>
-          <DeviceSelect
-            v-model:connected="isConnected"
-            :devices="devices"
-            ref="deviceSelect"
+          <DeviceSelect v-model="selectedId" :devices="devices" class="q-mt-sm" />
+          <q-btn
+            v-if="needsPairing"
+            flat
+            dense
+            no-caps
+            icon="link"
+            :label="ready ? 'Finish pairing' : 'Pair this Apple TV'"
             class="q-mt-sm"
+            @click="pairingOpen = true"
           />
+          <div v-if="error" class="text-negative q-mt-sm error-text">{{ error }}</div>
         </q-card-section>
       </q-card>
 
@@ -100,80 +113,104 @@ const { getButtonEvents } = useRepeatingCommand(sendCommand)
       <q-card flat bordered class="full-width q-elevation-2 q-card-glossy">
         <q-card-section class="bg-gradient q-pa-sm">
           <div class="column items-center q-gutter-y-sm">
-            <!-- Directional Pad (Compact D-pad) -->
+            <!-- Directional Pad -->
             <div class="row justify-center">
               <GlowButton
                 color="secondary-gradient"
                 icon="arrow_upward"
-                :disabled="!isConnected"
+                :disabled="!ready"
                 v-on="getButtonEvents('up')"
               />
             </div>
-            <div class="row justify-center q-mt-sm">
+            <div class="row justify-center">
               <GlowButton
                 color="secondary-gradient"
                 icon="arrow_back"
-                :disabled="!isConnected"
+                :disabled="!ready"
                 v-on="getButtonEvents('left')"
               />
               <GlowButton
                 color="secondary-gradient"
                 label="OK"
-                :disabled="!isConnected"
-                v-on="getButtonEvents('select')"
+                :disabled="!ready"
+                @click="send('select')"
               />
               <GlowButton
                 color="secondary-gradient"
                 icon="arrow_forward"
-                :disabled="!isConnected"
+                :disabled="!ready"
                 v-on="getButtonEvents('right')"
               />
+            </div>
+            <div class="row justify-center">
               <GlowButton
                 color="secondary-gradient"
                 icon="arrow_downward"
-                :disabled="!isConnected"
+                :disabled="!ready"
                 v-on="getButtonEvents('down')"
               />
             </div>
             <div class="row justify-center q-mt-sm">
               <GlowButton
                 color="secondary-gradient"
-                label="M"
-                :disabled="!isConnected"
-                @click="sendCommand('menu')"
+                icon="undo"
+                :disabled="!ready"
+                @click="send('menu')"
+              />
+              <GlowButton
+                color="secondary-gradient"
+                icon="tv"
+                :disabled="!ready"
+                @click="send('home')"
               />
             </div>
 
-            <!-- Media Controls (Compact, Inline) -->
+            <!-- Media Controls -->
             <div class="row justify-center q-mt-sm">
               <GlowButton
                 color="primary-gradient"
                 icon="skip_previous"
-                :disabled="!isConnected"
-                @click="sendCommand('previous')"
+                :disabled="!ready"
+                @click="send('previous')"
               />
               <GlowButton
                 color="primary-gradient"
                 icon="play_arrow"
-                :disabled="!isConnected"
-                @click="sendCommand('play')"
+                icon-right="pause"
+                :disabled="!ready"
+                @click="send('play_pause')"
               />
               <GlowButton
                 color="primary-gradient"
                 icon="skip_next"
-                :disabled="!isConnected"
-                @click="sendCommand('next')"
+                :disabled="!ready"
+                @click="send('next')"
+              />
+            </div>
+            <div class="row justify-center">
+              <GlowButton
+                color="primary-gradient"
+                icon="volume_down"
+                :disabled="!ready"
+                v-on="getButtonEvents('volume_down')"
               />
               <GlowButton
                 color="primary-gradient"
-                icon="pause"
-                :disabled="!isConnected"
-                @click="sendCommand('pause')"
+                icon="volume_up"
+                :disabled="!ready"
+                v-on="getButtonEvents('volume_up')"
               />
             </div>
           </div>
         </q-card-section>
       </q-card>
+
+      <PairingDialog
+        v-if="selected"
+        v-model="pairingOpen"
+        :device="selected"
+        @paired="refreshDevices"
+      />
     </div>
   </q-page>
 </template>
@@ -239,6 +276,10 @@ const { getButtonEvents } = useRepeatingCommand(sendCommand)
   font-family: 'Roboto', sans-serif;
   letter-spacing: 0.5px;
   font-size: 1.1rem;
+}
+
+.error-text {
+  font-size: 0.9rem;
 }
 
 @media (max-width: 480px) {

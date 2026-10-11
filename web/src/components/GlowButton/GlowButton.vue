@@ -2,6 +2,7 @@
   <q-btn
     :color="color"
     :icon="icon"
+    :icon-right="iconRight"
     :label="label"
     :disabled="disabled"
     class="q-btn-glow"
@@ -16,6 +17,7 @@
 interface Props {
   color?: string
   icon?: string
+  iconRight?: string
   label?: string
   disabled?: boolean
 }

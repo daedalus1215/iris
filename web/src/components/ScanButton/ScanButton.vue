@@ -1,26 +1,32 @@
 <template>
-  <GlowButton color="secondary-gradient" icon="settings_input_antenna" @click="scanForDevices" />
+  <GlowButton
+    color="secondary-gradient"
+    icon="settings_input_antenna"
+    :disabled="scanning"
+    @click="scanForDevices"
+  />
 </template>
 
 <script setup lang="ts">
-import { defineEmits } from 'vue'
-import api from '../../api'
+import { ref } from 'vue'
+import { scanDevices, errorMessage, type Device } from '../../api'
 import GlowButton from '../GlowButton/GlowButton.vue'
 
 const emit = defineEmits<{
-  (e: 'devices-found', devices: { label: string; value: string }[]): void
+  (e: 'devices-found', devices: Device[]): void
+  (e: 'error', message: string): void
 }>()
 
+const scanning = ref(false)
+
 const scanForDevices = async () => {
+  scanning.value = true
   try {
-    const response = await api.get('/apple-tv/scan')
-    const devices = response.data.map((device: { name: string; mac: string }) => ({
-      label: device.name,
-      value: device.mac,
-    }))
-    emit('devices-found', devices)
+    emit('devices-found', await scanDevices())
   } catch (error) {
-    console.error('Failed to scan devices:', error)
+    emit('error', errorMessage(error))
+  } finally {
+    scanning.value = false
   }
 }
 </script>
