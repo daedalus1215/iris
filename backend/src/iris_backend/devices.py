@@ -4,6 +4,7 @@ import asyncio
 import logging
 import time
 import uuid
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 import pyatv
@@ -12,7 +13,7 @@ from pyatv.const import OperatingSystem, Protocol
 from pyatv.interface import AppleTV, BaseConfig, DeviceListener, PairingHandler, Storage
 from pyatv.storage.file_storage import FileStorage
 
-from .commands import ACTIONS, COMMANDS
+from .commands import ACTIONS, COMMANDS, TOUCH_PHASES
 from .settings import Settings
 
 log = logging.getLogger(__name__)
@@ -184,15 +185,40 @@ class DeviceManager:
         args = (ACTIONS[action],) if action else ()
 
         config = await self._config(device_id)
+        started = time.perf_counter()
+        await self._call(
+            config, lambda atv: getattr(getattr(atv, command.interface), command.method)(*args)
+        )
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        log.info(
+            "%s %s%s %.1f ms",
+            config.identifier,
+            name,
+            f" ({action})" if action else "",
+            elapsed_ms,
+        )
+
+    async def touch(self, device_id: str, phase: str, x: int, y: int) -> None:
+        """One step of a finger on the Siri Remote's touch surface; x and y run 0 to 1000."""
+        mode = TOUCH_PHASES.get(phase)
+        if mode is None:
+            raise InvalidRequest(f"unknown touch phase '{phase}'")
+        config = await self._config(device_id)
+        await self._call(config, lambda atv: atv.touch.action(x, y, mode))
+        log.debug("%s touch %s %d,%d", config.identifier, phase, x, y)
+
+    async def _call(self, config: BaseConfig, call: Callable[[AppleTV], Awaitable[None]]) -> None:
+        """Run one pyatv call on the device's open connection, reconnecting once if it dropped.
+
+        Calls to one device run one at a time, so held buttons can't build a backlog.
+        """
         device_id = config.identifier
         async with self._locks.setdefault(device_id, asyncio.Lock()):
-            started = time.perf_counter()
             for attempt in (1, 2):
                 atv = await self._connection(config)
-                call = getattr(getattr(atv, command.interface), command.method)
                 try:
-                    await asyncio.wait_for(call(*args), self._settings.command_timeout)
-                    break
+                    await asyncio.wait_for(call(atv), self._settings.command_timeout)
+                    return
                 except TimeoutError:
                     self._drop(device_id)
                     raise
@@ -201,10 +227,6 @@ class DeviceManager:
                     if attempt == 2:
                         raise
                     log.info("connection to %s failed (%s); reconnecting", device_id, e)
-            elapsed_ms = (time.perf_counter() - started) * 1000
-            log.info(
-                "%s %s%s %.1f ms", device_id, name, f" ({action})" if action else "", elapsed_ms
-            )
 
     async def _connection(self, config: BaseConfig) -> AppleTV:
         device_id = config.identifier

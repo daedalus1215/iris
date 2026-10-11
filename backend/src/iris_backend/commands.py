@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from pyatv.const import InputAction
+from pyatv.const import InputAction, TouchAction
 
 
 @dataclass(frozen=True)
@@ -28,4 +28,11 @@ ACTIONS: dict[str, InputAction] = {
     "tap": InputAction.SingleTap,
     "double_tap": InputAction.DoubleTap,
     "hold": InputAction.Hold,
+}
+
+# A finger on the Siri Remote's touch surface: down, moving, up.
+TOUCH_PHASES: dict[str, TouchAction] = {
+    "press": TouchAction.Press,
+    "move": TouchAction.Hold,
+    "release": TouchAction.Release,
 }

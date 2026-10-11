@@ -57,6 +57,7 @@ class FakeAppleTV:
         self.remote_control = FakeInterface("remote_control", calls, fail)
         self.audio = FakeInterface("audio", calls, fail)
         self.power = FakeInterface("power", calls, fail)
+        self.touch = FakeInterface("touch", calls, fail)
 
     def close(self) -> set:
         self.closed = True
