@@ -32,7 +32,8 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 
 ### Other behavior
 
-- **Volume keys:** the phone's volume buttons send `volume_up` and `volume_down` while the app is open, if the M1 spike shows volume works.
+- **Volume keys:** the phone's volume buttons send `volume_up` and `volume_down` while the app is open, if the M1 spike shows volume works. With the media controls on, they work with the app closed too (D22).
+- **Media controls (D22):** a setting puts the selected TV in the notification shade and on the lock screen, like music: play/pause, previous, next, back and home. A Quick Settings tile opens the remote.
 - **Pairing:** in the app as well as the web remote. Use the link button in the header, or **Pair** under "isn't paired yet". Show PIN puts a PIN on the TV, and you type it into the phone. Companion is enough, so it's one PIN per TV per server; AirPlay is optional.
 - **Architecture:** a single Compose activity, with ViewModel + StateFlow and a repository over the API client.
 
@@ -42,7 +43,7 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 
 - [x] Decide where APKs get built: GitHub Actions, because this Mac can't run `aapt2` (D10)
 - [x] CI: core tests and both APKs on every push to `android/`, published to the rolling [`android-dev` pre-release](https://github.com/daedalus1215/iris/releases/tag/android-dev)
-- [ ] JDK 21 on this Mac for running core tests locally (you: `sudo pacman -S jdk21-openjdk android-tools`)
+- [x] JDK 21 on this Mac for running core tests locally (found installed on 2026-10-11)
 - [ ] Optional: install over `adb` (wireless debugging) instead of from the release page
 
 ### App
@@ -64,6 +65,9 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 - [x] Smoother swipes (D20, D21): touches carry the finger's time, every drag starts in the middle of the TV's touchpad, swipes keep to the axis they set out along, and the slide back at lift-off is ignored
 - [x] Typing with the phone's keyboard (D19): the app watches the TV's text field while it's open, and a dialog opens when one gets focus. Core: 10 new tests, 49 in total.
 - [ ] Try typing on the phone: a search on each TV
+- [x] Media controls in the notification shade and on the lock screen, with the volume keys working while the app is closed (D22). Core: 8 new tests, 61 in total.
+- [x] A Quick Settings tile that opens the remote (D22)
+- [ ] Try the media controls on the phone: the card's buttons in the shade and on the lock screen, the volume keys with the app closed, and the tile
 
 ### Release
 
@@ -81,4 +85,5 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 ## Later, or out of scope
 
 - Standalone mode, where the phone talks to the Apple TV directly with no backend (see D4).
-- A quick-settings tile and a home-screen widget.
+- A home-screen widget.
+- What's playing on the media card (D22). The backend would need to read it through pyatv first.
