@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -92,6 +93,12 @@ fun RemoteScreen(
     val enabled = state.canControl
     val hold = { command: String -> viewModel.press(command) }
     val release = viewModel::release
+    val keyboardFocused = state.keyboard?.focused == true
+    // Closing the keyboard dialog keeps it closed until the TV's text field loses focus.
+    var keyboardDismissed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(keyboardFocused) {
+        if (!keyboardFocused) keyboardDismissed = false
+    }
 
     Column(
         modifier = Modifier
@@ -108,6 +115,7 @@ fun RemoteScreen(
             onScan = viewModel::scan,
             onPair = state.selected?.let { device -> { viewModel.openPairing(device.id) } },
             onSettings = { showSettings = true },
+            onKeyboard = if (keyboardFocused && keyboardDismissed) ({ keyboardDismissed = false }) else null,
         )
         DevicePicker(state, onSelect = viewModel::select)
         if (localNetworkAllowed) {
@@ -182,6 +190,16 @@ fun RemoteScreen(
         )
     }
 
+    val selected = state.selected
+    if (keyboardFocused && !keyboardDismissed && selected != null) {
+        KeyboardDialog(
+            deviceName = selected.name,
+            initialText = state.keyboard?.text.orEmpty(),
+            onType = viewModel::type,
+            onDismiss = { keyboardDismissed = true },
+        )
+    }
+
     val pairing = state.pairing
     val pairingDevice = state.pairingDevice
     if (pairing != null && pairingDevice != null) {
@@ -202,6 +220,8 @@ private fun Header(
     onScan: () -> Unit,
     onPair: (() -> Unit)?,
     onSettings: () -> Unit,
+    /** Set while a text field on the TV has focus and its keyboard dialog is closed. */
+    onKeyboard: (() -> Unit)?,
 ) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
@@ -224,6 +244,11 @@ private fun Header(
         Spacer(Modifier.weight(1f))
         if (loading) {
             CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+        }
+        if (onKeyboard != null) {
+            IconButton(onClick = onKeyboard) {
+                Icon(painterResource(R.drawable.ic_keyboard), "Type on the TV", tint = Color.White)
+            }
         }
         IconButton(onClick = onScan) {
             Icon(painterResource(R.drawable.ic_refresh), "Scan for Apple TVs", tint = Color.White)

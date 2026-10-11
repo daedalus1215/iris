@@ -59,10 +59,17 @@ class MainActivity : ComponentActivity() {
         localNetworkAllowed = allowed
     }
 
-    // Nothing to touch while the app is in the background; the next drag reopens the touchpad.
+    // While the app is open, a text field on the TV brings up the phone's keyboard.
+    override fun onStart() {
+        super.onStart()
+        viewModel.watchKeyboard()
+    }
+
+    // Nothing to touch or type while the app is in the background; the next drag reopens the touchpad.
     override fun onStop() {
         super.onStop()
         viewModel.closeTouchpad()
+        viewModel.stopWatchingKeyboard()
     }
 
     private fun hasLocalNetworkPermission(): Boolean =

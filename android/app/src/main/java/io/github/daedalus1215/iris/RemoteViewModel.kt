@@ -53,6 +53,12 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun closeTouchpad() = controller.closeTouchpad()
 
+    fun watchKeyboard() = controller.watchKeyboard()
+
+    fun stopWatchingKeyboard() = controller.stopWatchingKeyboard()
+
+    fun type(text: String) = controller.type(text)
+
     fun openPairing(deviceId: String) = controller.openPairing(deviceId)
 
     fun closePairing() = controller.closePairing()
@@ -69,5 +75,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         controller.useClient(HttpIrisClient(settings.serverUrl, settings.token))
     }
 
-    override fun onCleared() = controller.closeTouchpad()
+    override fun onCleared() {
+        controller.closeTouchpad()
+        controller.stopWatchingKeyboard()
+    }
 }
