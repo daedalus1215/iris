@@ -42,7 +42,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 
 - **Date:** 2026-10-04
 - **Status:** Accepted
-- **Why:** Bedroom's MAC (`B6:B8:78:10:43:D0`) is locally administered, which suggests a private, randomized Wi-Fi address that can change.
+- **Why:** Bedroom's MAC is locally administered, which suggests a private, randomized Wi-Fi address that can change.
 - **Finding:** pyatv's main identifier for Bedroom turned out to be that same value (its AirPlay device id). So the API uses it as the id, but looks a device up by any identifier it advertises, including the Companion UUID. If the MAC changes, a client holding the old id gets a 404 and has to rescan; the pairing itself is unaffected.
 
 ### D7: One monorepo, `daedalus1215/iris`
@@ -76,7 +76,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 
 - **Date:** 2026-10-04
 - **Status:** Accepted
-- **Why:** This Mac (Apple M1 Pro running Arch, with a 16 KB-page kernel) can't run `aapt2`, the Android resource compiler that every app build needs:
+- **Why:** This Mac (Apple Silicon running Linux, with a 16 KB-page kernel) can't run `aapt2`, the Android resource compiler that every app build needs:
   - Google publishes `aapt2` for Linux only as an x86-64 binary.
   - The community ARM builds are aligned for 4 KB pages, so a 16 KB-page kernel refuses to load them.
 - **Consequences:**
@@ -113,3 +113,14 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Status:** Proposed
 - **Why:** Each CI build has to install over the previous one on the phone, which requires the same signing key every time. Debug keys aren't secrets; Android's own is the same well-known password everywhere.
 - **Consequences:** the release key (M3) must stay out of git, in a CI secret.
+
+### D15: No home-network details in this repo
+
+- **Date:** 2026-10-04
+- **Status:** Accepted
+- **Why:** The repo, its CI logs and its APKs are public. Private addresses can't be reached from the internet, so publishing them isn't dangerous. But there's no reason to publish a map of the home network either: addresses, device names and IDs, the tailnet address.
+- **How:**
+  - Specs use placeholders such as `<bedroom-ip>`. The real values live in `LOCAL.md` (git-ignored) and the home-lab `INVENTORY.md`.
+  - The app has no built-in server address. It asks on first launch, or takes one from your own `~/.gradle/gradle.properties`.
+  - Test fixtures use documentation addresses (`192.0.2.x`).
+- **Not done:** older commits still contain the values. Rewriting public history and force-pushing isn't worth it for private addresses.

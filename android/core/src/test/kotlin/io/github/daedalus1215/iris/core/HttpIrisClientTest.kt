@@ -41,12 +41,12 @@ class HttpIrisClientTest {
     fun `sends a command for the device with the token`() = runTest {
         server.enqueue(MockResponse.Builder().code(204).build())
 
-        client(token = "s3cret").send("B6:B8:78:10:43:D0", "up")
+        client(token = "s3cret").send("AA:BB:CC:00:00:01", "up")
 
         val request = server.takeRequest()
         assertEquals("POST", request.method)
         assertEquals(
-            listOf("api", "devices", "B6:B8:78:10:43:D0", "commands", "up"),
+            listOf("api", "devices", "AA:BB:CC:00:00:01", "commands", "up"),
             request.url.pathSegments,
         )
         assertEquals("Bearer s3cret", request.headers["Authorization"])
@@ -100,6 +100,13 @@ class HttpIrisClientTest {
         val error = assertFailsWith<IrisException> { HttpIrisClient("http://127.0.0.1:1").devices() }
 
         assertEquals("Can't reach the Iris server at http://127.0.0.1:1", error.message)
+    }
+
+    @Test
+    fun `no server address yet is an IrisException`() = runTest {
+        val error = assertFailsWith<IrisException> { HttpIrisClient("  ").devices() }
+
+        assertEquals("No Iris server address set", error.message)
     }
 
     @Test

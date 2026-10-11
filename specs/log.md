@@ -14,7 +14,7 @@ Newest first. Add one entry per working session.
 
 - First install on the phone: "no connection". The phone's requests never reached the backend. Cause: Android 17 blocks apps targeting API 37 from reaching the local network unless they hold the new `ACCESS_LOCAL_NETWORK` permission. The app now asks for it.
 
-- Found the second Apple TV, "Living Room" (`172.16.0.164`, Apple TV 4K gen 2). A multicast scan found nothing, because ufw drops the Apple TVs' direct replies to it (logged as UFW BLOCK from source port 5353). Added both addresses to `IRIS_SCAN_HOSTS` in the local `backend/.env`; the backend now lists both. Living Room isn't paired yet.
+- Found the second Apple TV, "Living Room" (`<living-room-ip>`, Apple TV 4K gen 2). A multicast scan found nothing, because ufw drops the Apple TVs' direct replies to it (logged as UFW BLOCK from source port 5353). Added both addresses to `IRIS_SCAN_HOSTS` in the local `backend/.env`; the backend now lists both. Living Room isn't paired yet.
 - Paired Living Room over Companion and AirPlay through the backend's pairing API, the first real use of it. Then sent it commands: 250 ms for the first (it connects), 4.7 ms after that.
 
 **Next**
@@ -36,7 +36,7 @@ Newest first. Add one entry per working session.
 - New Python backend (FastAPI + pyatv) in `backend/`, replacing NestJS: 24 tests, ruff clean. Tested live against Bedroom.
 - Web remote switched to the new API:
   - Pairing dialog, hold-to-repeat without a backlog, Home and volume buttons, a single play/pause button, the d-pad fix, and an environment badge.
-- `make run` at the repo root serves everything at `http://172.16.0.102:8080`.
+- `make run` at the repo root serves everything at `http://<laptop-ip>:8080`.
 - All of this is on branch `backend`, uncommitted.
 - Phone test: you opened the firewall and controlled Bedroom from the phone over Wi-Fi. Every button works (hold-to-repeat, play/pause, previous/next, volume, power), and it's very snappy.
 
@@ -54,7 +54,7 @@ Newest first. Add one entry per working session.
   - `iris-backend` runs `atvremote` once per button press, with a shell-injection hole.
   - `iris-frontend` is a working Vue/Quasar web remote, but pairing from it doesn't work.
   - `iris` is an empty Android template.
-- Scanned the network with pyatv 0.18.0 (through `uvx`). Found Bedroom: Apple TV 4K, tvOS 26.6, 172.16.0.242. Companion and AirPlay both require pairing; nothing is paired yet.
+- Scanned the network with pyatv 0.18.0 (through `uvx`). Found Bedroom: Apple TV 4K, tvOS 26.6, at `<bedroom-ip>`. Companion and AirPlay both require pairing; nothing is paired yet.
 - Checked this PC: Docker is installed but not running, and there's no Android tooling.
 - Decided (D2–D4): a Python backend, a Docker Compose home lab, and a native Android client.
 - Wrote the specs: the README and the M1, M2 and M3 milestone files.

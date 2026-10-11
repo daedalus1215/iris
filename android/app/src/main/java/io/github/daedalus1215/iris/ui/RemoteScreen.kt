@@ -69,7 +69,8 @@ fun RemoteScreen(
     onAllowLocalNetwork: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    var showSettings by rememberSaveable { mutableStateOf(false) }
+    // First launch, with no server address yet: go straight to settings.
+    var showSettings by rememberSaveable { mutableStateOf(viewModel.serverUrl.isBlank()) }
     val enabled = state.canControl
     val hold = { command: String -> viewModel.press(command) }
     val release = viewModel::release

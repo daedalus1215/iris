@@ -35,7 +35,7 @@ fun SettingsDialog(
                     value = url,
                     onValueChange = { url = it },
                     label = { Text("Server address") },
-                    placeholder = { Text("http://192.168.1.10:8080") },
+                    placeholder = { Text("http://iris.lan") },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                 )

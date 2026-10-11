@@ -18,7 +18,7 @@ class FakeConfig:
         self.identifier = identifier
         self.all_identifiers = [identifier, f"{identifier}-alt"]
         self.name = name
-        self.address = "172.16.0.242"
+        self.address = "192.0.2.10"
         self.device_info = SimpleNamespace(
             operating_system=OperatingSystem.TvOS, version="26.6", model_str="Apple TV 4K"
         )
