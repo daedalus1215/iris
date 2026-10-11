@@ -51,15 +51,23 @@ const pad = ref<HTMLDivElement | null>(null)
 const glow = ref<{ x: number; y: number } | null>(null)
 
 // The touch being followed: undecided until it lifts, moves past the slop, or rests.
+interface Point {
+  x: number
+  y: number
+}
+
 let pointerId: number | null = null
 let mode: 'pending' | 'drag' | 'held' = 'pending'
-let start = { x: 0, y: 0 }
-let last = { x: 0, y: 0 }
+let start: Point = { x: 0, y: 0 }
+let last: Point = { x: 0, y: 0 }
 let lastTime = 0
+// Where the drag was pressed, and where it was last sent; see liftOff.
+let pressedAt: Point = { x: 0, y: 0 }
+let sentAt: Point = { x: 0, y: 0 }
 let lastSent = 0
 let longPressTimer: number | undefined
 
-const toTv = (point: { x: number; y: number }) => {
+const toTv = (point: Point) => {
   const rect = pad.value!.getBoundingClientRect()
   const scale = (offset: number, length: number) =>
     Math.min(TOUCH_RANGE, Math.max(0, Math.round((offset / length) * TOUCH_RANGE)))
@@ -101,11 +109,22 @@ const onMove = (event: PointerEvent) => {
     window.clearTimeout(longPressTimer)
     mode = 'drag'
     emit('touch', 'press', ...toTv(last), lastTime)
+    pressedAt = sentAt = last
     lastSent = event.timeStamp
   } else if (event.timeStamp - lastSent >= TOUCH_INTERVAL_MS) {
     emit('touch', 'move', ...toTv(last), lastTime)
+    sentAt = last
     lastSent = event.timeStamp
   }
+}
+
+// A finger often slides back a little as it lifts, and a release there would read as a flick
+// the other way, so a tail that points back against the drag is dropped. A tail that keeps going
+// is kept, so a flick keeps its speed.
+const liftOff = (lifted: Point): Point => {
+  const drag = { x: sentAt.x - pressedAt.x, y: sentAt.y - pressedAt.y }
+  const tail = { x: lifted.x - sentAt.x, y: lifted.y - sentAt.y }
+  return drag.x * tail.x + drag.y * tail.y < 0 ? sentAt : lifted
 }
 
 const onUp = (event: PointerEvent) => {
@@ -114,7 +133,8 @@ const onUp = (event: PointerEvent) => {
     navigator.vibrate?.(10)
     emit('tap')
   } else if (mode === 'drag') {
-    emit('touch', 'release', ...toTv({ x: event.clientX, y: event.clientY }), event.timeStamp)
+    const lifted = liftOff({ x: event.clientX, y: event.clientY })
+    emit('touch', 'release', ...toTv(lifted), event.timeStamp)
   }
   finish()
 }
@@ -122,7 +142,7 @@ const onUp = (event: PointerEvent) => {
 // The browser took the touch over (e.g. a system gesture): lift the finger, but it's no tap.
 const onCancel = (event: PointerEvent) => {
   if (event.pointerId !== pointerId) return
-  if (mode === 'drag') emit('touch', 'release', ...toTv(last), lastTime)
+  if (mode === 'drag') emit('touch', 'release', ...toTv(liftOff(last)), lastTime)
   finish()
 }
 
