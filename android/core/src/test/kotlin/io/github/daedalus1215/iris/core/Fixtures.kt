@@ -37,9 +37,16 @@ class FakeClient(
 
     override suspend fun scan() = devices()
 
-    override suspend fun send(deviceId: String, command: String) {
+    override suspend fun send(deviceId: String, command: String, action: String?) {
         failWith?.let { throw it }
-        sent += deviceId to command
+        sent += deviceId to if (action == null) command else "$command ($action)"
+    }
+
+    val touchpads = mutableListOf<FakeTouchpad>()
+
+    override fun openTouchpad(deviceId: String, onError: (IrisException) -> Unit): Touchpad {
+        failWith?.let { throw it }
+        return FakeTouchpad(deviceId, onError).also { touchpads += it }
     }
 
     var goodPin = "1234"
@@ -59,5 +66,20 @@ class FakeClient(
                 PairingProtocol.AIRPLAY -> device.copy(paired = device.paired.copy(airplay = true))
             }
         }
+    }
+}
+
+class FakeTouchpad(val deviceId: String, val onError: (IrisException) -> Unit) : Touchpad {
+    val events = mutableListOf<Triple<TouchPhase, Int, Int>>()
+    var closed = false
+
+    override fun send(phase: TouchPhase, x: Int, y: Int): Boolean {
+        if (closed) return false
+        events += Triple(phase, x, y)
+        return true
+    }
+
+    override fun close() {
+        closed = true
     }
 }

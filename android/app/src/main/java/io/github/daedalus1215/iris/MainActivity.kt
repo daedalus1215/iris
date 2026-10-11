@@ -59,6 +59,12 @@ class MainActivity : ComponentActivity() {
         localNetworkAllowed = allowed
     }
 
+    // Nothing to touch while the app is in the background; the next drag reopens the touchpad.
+    override fun onStop() {
+        super.onStop()
+        viewModel.closeTouchpad()
+    }
+
     private fun hasLocalNetworkPermission(): Boolean =
         Build.VERSION.SDK_INT < ANDROID_17 ||
             checkSelfPermission(ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED

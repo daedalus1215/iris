@@ -100,15 +100,117 @@ class RemoteControllerTest {
     }
 
     @Test
-    fun `switching servers reloads from the new one`() = runTest {
-        val controller = loaded(FakeClient(env = "local"))
+    fun `a long press sends the hold action`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
 
+        controller.send("select", action = "hold")
+        advanceUntilIdle()
+
+        assertEquals(listOf(BEDROOM.id to "select (hold)"), client.sent)
+    }
+
+    @Test
+    fun `a drag streams over one touchpad connection, kept between drags`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
+
+        controller.touch(TouchPhase.PRESS, 300, 500)
+        controller.touch(TouchPhase.MOVE, 450, 500)
+        controller.touch(TouchPhase.RELEASE, 600, 500)
+        controller.touch(TouchPhase.PRESS, 500, 500)
+
+        val pad = client.touchpads.single()
+        assertEquals(BEDROOM.id, pad.deviceId)
+        assertEquals(
+            listOf(
+                Triple(TouchPhase.PRESS, 300, 500),
+                Triple(TouchPhase.MOVE, 450, 500),
+                Triple(TouchPhase.RELEASE, 600, 500),
+                Triple(TouchPhase.PRESS, 500, 500),
+            ),
+            pad.events,
+        )
+    }
+
+    @Test
+    fun `a dropped touchpad reopens, and a drag under way starts again with a press`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
+        controller.touch(TouchPhase.PRESS, 300, 500)
+
+        client.touchpads.single().closed = true
+        controller.touch(TouchPhase.MOVE, 400, 500)
+
+        assertEquals(2, client.touchpads.size)
+        assertEquals(
+            listOf(Triple(TouchPhase.PRESS, 400, 500), Triple(TouchPhase.MOVE, 400, 500)),
+            client.touchpads[1].events,
+        )
+    }
+
+    @Test
+    fun `a release on a dropped touchpad doesn't open a new one`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
+        controller.touch(TouchPhase.PRESS, 300, 500)
+
+        client.touchpads.single().closed = true
+        controller.touch(TouchPhase.RELEASE, 400, 500)
+
+        assertEquals(1, client.touchpads.size)
+    }
+
+    @Test
+    fun `switching devices moves the touchpad to the new one`() = runTest {
+        val den = DEN_UNPAIRED.copy(paired = Paired(companion = true, airplay = false))
+        val client = FakeClient(devices = listOf(BEDROOM, den))
+        val controller = loaded(client, selectedId = BEDROOM.id)
+        controller.touch(TouchPhase.PRESS, 500, 500)
+
+        controller.select(den.id)
+        controller.touch(TouchPhase.PRESS, 500, 500)
+
+        assertEquals(listOf(BEDROOM.id, den.id), client.touchpads.map { it.deviceId })
+        assertTrue(client.touchpads[0].closed)
+    }
+
+    @Test
+    fun `touchpad errors show, and the next drag clears them`() = runTest {
+        val client = FakeClient()
+        val controller = loaded(client)
+        controller.touch(TouchPhase.PRESS, 500, 500)
+
+        client.touchpads.single().onError(IrisException("Apple TV unreachable"))
+        assertEquals("Apple TV unreachable", controller.state.value.error)
+
+        controller.touch(TouchPhase.PRESS, 500, 500)
+        assertNull(controller.state.value.error)
+    }
+
+    @Test
+    fun `the touchpad is ignored for an unpaired device`() = runTest {
+        val client = FakeClient(devices = listOf(DEN_UNPAIRED))
+        val controller = loaded(client)
+
+        controller.touch(TouchPhase.PRESS, 500, 500)
+
+        assertEquals(emptyList(), client.touchpads)
+    }
+
+    @Test
+    fun `switching servers reloads from the new one`() = runTest {
+        val old = FakeClient(env = "local")
+        val controller = loaded(old)
+
+        controller.touch(TouchPhase.PRESS, 500, 500)
         controller.useClient(FakeClient(devices = listOf(DEN_UNPAIRED), env = "prod"))
         advanceUntilIdle()
 
         val state = controller.state.value
         assertEquals("prod", state.env)
         assertEquals(listOf(DEN_UNPAIRED), state.devices)
+        assertTrue(old.touchpads.single().closed)
     }
 
     @Test

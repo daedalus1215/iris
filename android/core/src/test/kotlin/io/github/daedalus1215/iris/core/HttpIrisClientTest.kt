@@ -3,11 +3,17 @@ package io.github.daedalus1215.iris.core
 import kotlinx.coroutines.test.runTest
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.TimeUnit
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class HttpIrisClientTest {
@@ -143,5 +149,73 @@ class HttpIrisClientTest {
         )
         assertEquals("""{"session":"abc123","pin":"0042"}""", request.body?.utf8())
         assertEquals(true, request.headers["Content-Type"]?.startsWith("application/json"))
+    }
+
+    @Test
+    fun `a long press sends its action as JSON`() = runTest {
+        server.enqueue(MockResponse.Builder().code(204).build())
+
+        client().send("AA:BB:CC:00:00:01", "select", action = "hold")
+
+        assertEquals("""{"action":"hold"}""", server.takeRequest().body?.utf8())
+    }
+
+    /** A server end of the touchpad socket that records what arrives and can talk back. */
+    private class TouchServer(private val greeting: String? = null) : WebSocketListener() {
+        val received = LinkedBlockingQueue<String>()
+
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            greeting?.let { webSocket.send(it) }
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            received += text
+        }
+    }
+
+    private fun <T> LinkedBlockingQueue<T>.next(): T? = poll(5, TimeUnit.SECONDS)
+
+    @Test
+    fun `the touchpad streams events in order to the device's socket, with the token`() {
+        val touchServer = TouchServer()
+        server.enqueue(MockResponse.Builder().webSocketUpgrade(touchServer).build())
+
+        val pad = client(token = "s3cret").openTouchpad("AA:BB:CC:00:00:01") { throw it }
+        pad.send(TouchPhase.PRESS, 300, 500)
+        pad.send(TouchPhase.MOVE, 450, 520)
+        pad.send(TouchPhase.RELEASE, 700, 500)
+
+        assertEquals("""{"phase":"press","x":300,"y":500}""", touchServer.received.next())
+        assertEquals("""{"phase":"move","x":450,"y":520}""", touchServer.received.next())
+        assertEquals("""{"phase":"release","x":700,"y":500}""", touchServer.received.next())
+        val request = server.takeRequest()
+        assertEquals(listOf("api", "devices", "AA:BB:CC:00:00:01", "touch"), request.url.pathSegments)
+        assertEquals("Bearer s3cret", request.headers["Authorization"])
+        pad.close()
+        assertFalse(pad.send(TouchPhase.PRESS, 0, 0))
+    }
+
+    @Test
+    fun `the server's touchpad errors reach onError`() {
+        val touchServer = TouchServer(greeting = """{"detail":"'Den' isn't paired yet","status":409}""")
+        server.enqueue(MockResponse.Builder().webSocketUpgrade(touchServer).build())
+        val errors = LinkedBlockingQueue<IrisException>()
+
+        client().openTouchpad("DEN") { errors += it }
+
+        assertEquals("'Den' isn't paired yet", errors.next()?.message)
+    }
+
+    @Test
+    fun `a refused touchpad reports why, and stops taking events`() {
+        respond("""{"detail":"missing or wrong token"}""", code = 401)
+        val errors = LinkedBlockingQueue<IrisException>()
+
+        val pad = client().openTouchpad("AA:BB:CC:00:00:01") { errors += it }
+
+        val error = errors.next()
+        assertEquals("missing or wrong token", error?.message)
+        assertEquals(401, error?.status)
+        assertFalse(pad.send(TouchPhase.PRESS, 0, 0))
     }
 }

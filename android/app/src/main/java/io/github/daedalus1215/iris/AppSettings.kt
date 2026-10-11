@@ -19,9 +19,15 @@ class AppSettings(context: Context) {
         get() = prefs.getString(SELECTED_DEVICE, null)
         set(value) = prefs.edit { putString(SELECTED_DEVICE, value) }
 
+    /** Arrow buttons in place of the touchpad. */
+    var arrowButtons: Boolean
+        get() = prefs.getBoolean(ARROW_BUTTONS, false)
+        set(value) = prefs.edit { putBoolean(ARROW_BUTTONS, value) }
+
     private companion object {
         const val SERVER_URL = "server_url"
         const val TOKEN = "token"
         const val SELECTED_DEVICE = "selected_device"
+        const val ARROW_BUTTONS = "arrow_buttons"
     }
 }

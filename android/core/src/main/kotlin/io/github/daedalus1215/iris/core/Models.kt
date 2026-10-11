@@ -35,3 +35,10 @@ enum class PairingProtocol(val apiName: String) {
     COMPANION("companion"),
     AIRPLAY("airplay"),
 }
+
+/** A finger on the Siri Remote's touch surface: down, moving, up. */
+enum class TouchPhase(val apiName: String) {
+    PRESS("press"),
+    MOVE("move"),
+    RELEASE("release"),
+}
