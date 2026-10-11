@@ -1,0 +1,38 @@
+[project]
+name = "iris-backend"
+version = "0.1.0"
+description = "Iris API: controls an Apple TV through pyatv and serves the web remote"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.115",
+    "pyatv>=0.18,<0.19",
+    "pydantic-settings>=2.7",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.scripts]
+iris-backend = "iris_backend.__main__:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.25",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC"]
