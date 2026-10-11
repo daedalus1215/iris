@@ -115,4 +115,33 @@ class HttpIrisClientTest {
 
         assertEquals("Not a valid server address: not a url", error.message)
     }
+
+    @Test
+    fun `starting pairing returns the session`() = runTest {
+        respond("""{"session":"abc123"}""")
+
+        assertEquals("abc123", client().startPairing("AA:BB:CC:00:00:01", PairingProtocol.COMPANION))
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals(
+            listOf("api", "devices", "AA:BB:CC:00:00:01", "pairing", "companion"),
+            request.url.pathSegments,
+        )
+    }
+
+    @Test
+    fun `finishing pairing sends the session and PIN as JSON`() = runTest {
+        respond("""{"paired":true}""")
+
+        client().finishPairing("AA:BB:CC:00:00:01", PairingProtocol.AIRPLAY, "abc123", "0042")
+
+        val request = server.takeRequest()
+        assertEquals(
+            listOf("api", "devices", "AA:BB:CC:00:00:01", "pairing", "airplay", "pin"),
+            request.url.pathSegments,
+        )
+        assertEquals("""{"session":"abc123","pin":"0042"}""", request.body?.utf8())
+        assertEquals(true, request.headers["Content-Type"]?.startsWith("application/json"))
+    }
 }

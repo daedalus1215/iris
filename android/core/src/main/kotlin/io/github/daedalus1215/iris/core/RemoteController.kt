@@ -13,9 +13,24 @@ data class RemoteState(
     val env: String? = null,
     val error: String? = null,
     val loading: Boolean = false,
+    /** Set while the pairing screen is open. */
+    val pairing: PairingState? = null,
 ) {
     val selected: Device? get() = devices.firstOrNull { it.id == selectedId }
     val canControl: Boolean get() = selected?.canControl == true
+    val pairingDevice: Device? get() = pairing?.let { p -> devices.firstOrNull { it.id == p.deviceId } }
+}
+
+data class PairingState(
+    val deviceId: String,
+    /** The protocol being paired right now, if any. */
+    val protocol: PairingProtocol? = null,
+    /** Set once the PIN is showing on the TV; the PIN is sent with it. */
+    val session: String? = null,
+    val busy: Boolean = false,
+    val error: String? = null,
+) {
+    val awaitingPin: Boolean get() = session != null
 }
 
 /** Everything the remote screen does, independent of Android so it can be unit tested. */
@@ -57,6 +72,52 @@ class RemoteController(
     }
 
     fun release() = repeating.release()
+
+    fun openPairing(deviceId: String) {
+        _state.update { it.copy(pairing = PairingState(deviceId)) }
+    }
+
+    fun closePairing() {
+        _state.update { it.copy(pairing = null) }
+    }
+
+    /** Asks the Apple TV to show a PIN for [protocol]. */
+    fun startPairing(protocol: PairingProtocol) {
+        val pairing = state.value.pairing ?: return
+        if (pairing.busy) return
+        updatePairing { it.copy(protocol = protocol, session = null, busy = true, error = null) }
+        scope.launch {
+            try {
+                val session = client.startPairing(pairing.deviceId, protocol)
+                updatePairing { it.copy(session = session, busy = false) }
+            } catch (e: IrisException) {
+                updatePairing { it.copy(protocol = null, busy = false, error = e.message) }
+            }
+        }
+    }
+
+    /** Sends the PIN the TV is showing, then reloads so the device shows as paired. */
+    fun submitPin(pin: String) {
+        val pairing = state.value.pairing ?: return
+        val protocol = pairing.protocol ?: return
+        val session = pairing.session ?: return
+        if (pairing.busy) return
+        updatePairing { it.copy(busy = true, error = null) }
+        scope.launch {
+            try {
+                client.finishPairing(pairing.deviceId, protocol, session, pin)
+                updatePairing { it.copy(protocol = null, session = null, busy = false) }
+                refresh()
+            } catch (e: IrisException) {
+                // The server ends the session after a failed attempt, so the next try starts over.
+                updatePairing { it.copy(protocol = null, session = null, busy = false, error = e.message) }
+            }
+        }
+    }
+
+    private fun updatePairing(change: (PairingState) -> PairingState) {
+        _state.update { it.copy(pairing = it.pairing?.let(change)) }
+    }
 
     private fun load(fetch: suspend (IrisClient) -> List<Device>) {
         val client = client

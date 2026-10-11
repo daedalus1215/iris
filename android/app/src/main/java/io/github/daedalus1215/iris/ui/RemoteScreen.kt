@@ -89,11 +89,12 @@ fun RemoteScreen(
             env = state.env,
             loading = state.loading,
             onScan = viewModel::scan,
+            onPair = state.selected?.let { device -> { viewModel.openPairing(device.id) } },
             onSettings = { showSettings = true },
         )
         DevicePicker(state, onSelect = viewModel::select)
         if (localNetworkAllowed) {
-            StatusLine(state)
+            StatusLine(state, onPair = viewModel::openPairing)
         } else {
             LocalNetworkBanner(onAllowLocalNetwork)
         }
@@ -160,10 +161,28 @@ fun RemoteScreen(
             onDismiss = { showSettings = false },
         )
     }
+
+    val pairing = state.pairing
+    val pairingDevice = state.pairingDevice
+    if (pairing != null && pairingDevice != null) {
+        PairingDialog(
+            device = pairingDevice,
+            pairing = pairing,
+            onStart = viewModel::startPairing,
+            onSubmitPin = viewModel::submitPin,
+            onClose = viewModel::closePairing,
+        )
+    }
 }
 
 @Composable
-private fun Header(env: String?, loading: Boolean, onScan: () -> Unit, onSettings: () -> Unit) {
+private fun Header(
+    env: String?,
+    loading: Boolean,
+    onScan: () -> Unit,
+    onPair: (() -> Unit)?,
+    onSettings: () -> Unit,
+) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             "Iris",
@@ -188,6 +207,13 @@ private fun Header(env: String?, loading: Boolean, onScan: () -> Unit, onSetting
         }
         IconButton(onClick = onScan) {
             Icon(painterResource(R.drawable.ic_refresh), "Scan for Apple TVs", tint = Color.White)
+        }
+        IconButton(onClick = { onPair?.invoke() }, enabled = onPair != null) {
+            Icon(
+                painterResource(R.drawable.ic_link),
+                "Pair this Apple TV",
+                tint = if (onPair != null) Color.White else Color.White.copy(alpha = 0.4f),
+            )
         }
         IconButton(onClick = onSettings) {
             Icon(painterResource(R.drawable.ic_settings), "Settings", tint = Color.White)
@@ -223,16 +249,26 @@ private fun DevicePicker(state: RemoteState, onSelect: (String) -> Unit) {
 }
 
 @Composable
-private fun StatusLine(state: RemoteState) {
+private fun StatusLine(state: RemoteState, onPair: (deviceId: String) -> Unit) {
     val selected = state.selected
     val error = state.error
-    val (text, color) = when {
-        error != null -> error to MaterialTheme.colorScheme.error
-        selected != null && !selected.canControl ->
-            "${selected.name} isn't paired yet. Pair it from the web remote." to IrisColors.Badge
-        else -> return
+    when {
+        error != null -> Text(
+            error,
+            color = MaterialTheme.colorScheme.error,
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        selected != null && !selected.canControl -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "${selected.name} isn't paired with this server yet.",
+                color = IrisColors.Badge,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            TextButton(onClick = { onPair(selected.id) }) { Text("Pair") }
+        }
     }
-    Text(text, color = color, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodyMedium)
 }
 
 @Composable
