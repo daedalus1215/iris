@@ -9,8 +9,15 @@ from dataclasses import dataclass
 
 import pyatv
 from pyatv import exceptions
-from pyatv.const import OperatingSystem, Protocol
-from pyatv.interface import AppleTV, BaseConfig, DeviceListener, PairingHandler, Storage
+from pyatv.const import KeyboardFocusState, OperatingSystem, Protocol
+from pyatv.interface import (
+    AppleTV,
+    BaseConfig,
+    DeviceListener,
+    KeyboardListener,
+    PairingHandler,
+    Storage,
+)
 from pyatv.storage.file_storage import FileStorage
 
 from .commands import ACTIONS, COMMANDS, TOUCH_PHASES
@@ -47,6 +54,18 @@ class PairingSessionNotFound(Exception):
 
 class PairingFailed(Exception):
     pass
+
+
+@dataclass
+class KeyboardState:
+    """The Apple TV's text field: whether one has focus, and what's typed in it."""
+
+    focused: bool
+    text: str | None = None
+
+
+# Gets the keyboard's new state, or None once the connection to the Apple TV is gone.
+KeyboardWatcher = Callable[[KeyboardState | None], None]
 
 
 @dataclass
@@ -90,7 +109,7 @@ class _PairingSession:
     expires: float
 
 
-class _ConnectionListener(DeviceListener):
+class _ConnectionListener(DeviceListener, KeyboardListener):
     def __init__(self, manager: "DeviceManager", device_id: str, atv: AppleTV) -> None:
         self._manager = manager
         self._device_id = device_id
@@ -102,6 +121,11 @@ class _ConnectionListener(DeviceListener):
 
     def connection_closed(self) -> None:
         self._manager._forget(self._device_id, self._atv)
+
+    def focusstate_update(
+        self, old_state: KeyboardFocusState, new_state: KeyboardFocusState
+    ) -> None:
+        self._manager._keyboard_focus_changed(self._device_id)
 
 
 class DeviceManager:
@@ -115,6 +139,8 @@ class DeviceManager:
         self._listeners: dict[str, _ConnectionListener] = {}
         self._locks: dict[str, asyncio.Lock] = {}
         self._pairings: dict[str, _PairingSession] = {}
+        self._keyboard_watchers: dict[str, set[KeyboardWatcher]] = {}
+        self._tasks: set[asyncio.Task] = set()
 
     async def start(self) -> None:
         self._settings.data_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -209,7 +235,7 @@ class DeviceManager:
         await self._call(config, lambda atv: atv.touch.action(x, y, mode))
         log.debug("%s touch %s %d,%d", config.identifier, phase, x, y)
 
-    async def _call(self, config: BaseConfig, call: Callable[[AppleTV], Awaitable[None]]) -> None:
+    async def _call[T](self, config: BaseConfig, call: Callable[[AppleTV], Awaitable[T]]) -> T:
         """Run one pyatv call on the device's open connection, reconnecting once if it dropped.
 
         Calls to one device run one at a time, so held buttons can't build a backlog.
@@ -219,8 +245,7 @@ class DeviceManager:
             for attempt in (1, 2):
                 atv = await self._connection(config)
                 try:
-                    await asyncio.wait_for(call(atv), self._settings.command_timeout)
-                    return
+                    return await asyncio.wait_for(call(atv), self._settings.command_timeout)
                 except TimeoutError:
                     self._drop(device_id)
                     raise
@@ -240,6 +265,7 @@ class DeviceManager:
         atv = await asyncio.wait_for(self._client.connect(config, self._storage), CONNECT_TIMEOUT)
         listener = _ConnectionListener(self, device_id, atv)
         atv.listener = listener
+        atv.keyboard.listener = listener
         self._connections[device_id] = atv
         self._listeners[device_id] = listener
         log.info("connected to %s in %.0f ms", device_id, (time.perf_counter() - started) * 1000)
@@ -250,15 +276,68 @@ class DeviceManager:
         if self._connections.get(device_id) is atv:
             del self._connections[device_id]
             self._listeners.pop(device_id, None)
+            self._connection_gone(device_id)
 
     def _drop(self, device_id: str) -> None:
         self._listeners.pop(device_id, None)
         if atv := self._connections.pop(device_id, None):
             asyncio.get_running_loop().create_task(self._close(atv))
+            self._connection_gone(device_id)
 
     @staticmethod
     async def _close(atv: AppleTV) -> None:
         await asyncio.gather(*atv.close(), return_exceptions=True)
+
+    # Keyboard
+
+    async def watch_keyboard(self, device_id: str, watcher: KeyboardWatcher) -> Callable[[], None]:
+        """Give [watcher] the text field's state now, then whenever focus moves to or from one.
+
+        It gets None once the connection to the Apple TV is lost, and nothing after that.
+        Returns a function that stops watching.
+        """
+        config = await self._config(device_id)
+        watchers = self._keyboard_watchers.setdefault(config.identifier, set())
+        # Watch first, so a change while the state is being read isn't missed.
+        watchers.add(watcher)
+        try:
+            watcher(await self._call(config, _keyboard_state))
+        except BaseException:
+            watchers.discard(watcher)
+            raise
+        return lambda: watchers.discard(watcher)
+
+    async def set_text(self, device_id: str, text: str) -> None:
+        """Replace what's typed in the Apple TV's focused text field."""
+        config = await self._config(device_id)
+        await self._call(config, lambda atv: atv.keyboard.text_set(text))
+        log.debug("%s text set (%d characters)", config.identifier, len(text))
+
+    def _keyboard_focus_changed(self, device_id: str) -> None:
+        if self._keyboard_watchers.get(device_id):
+            task = asyncio.get_running_loop().create_task(self._publish_keyboard(device_id))
+            self._tasks.add(task)
+            task.add_done_callback(self._tasks.discard)
+
+    async def _publish_keyboard(self, device_id: str) -> None:
+        config = self._lookup(device_id)
+        if config is None:
+            return
+        try:
+            state = await self._call(config, _keyboard_state)
+        except Exception as e:  # the watchers keep the last state; the next change tries again
+            log.warning("couldn't read the keyboard of %s: %r", device_id, e)
+            return
+        for watcher in list(self._keyboard_watchers.get(device_id, ())):
+            watcher(state)
+
+    def _connection_gone(self, device_id: str) -> None:
+        """Keyboard events stop with the connection, so tell the watchers to start again."""
+        watchers = self._keyboard_watchers.get(device_id)
+        if watchers:
+            for watcher in list(watchers):
+                watcher(None)
+            watchers.clear()
 
     # Pairing
 
@@ -320,6 +399,14 @@ class DeviceManager:
         await self._storage.save()
         if self._settings.storage_file.exists():
             self._settings.storage_file.chmod(0o600)
+
+
+async def _keyboard_state(atv: AppleTV) -> KeyboardState:
+    if atv.keyboard.text_focus_state != KeyboardFocusState.Focused:
+        return KeyboardState(focused=False)
+    # None means the field closed in the meantime.
+    text = await atv.keyboard.text_get()
+    return KeyboardState(focused=text is not None, text=text)
 
 
 def _has_credentials(config: BaseConfig, protocol: Protocol) -> bool:
