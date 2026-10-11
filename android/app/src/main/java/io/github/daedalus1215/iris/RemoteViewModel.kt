@@ -30,6 +30,8 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
         controller.refresh()
     }
 
+    fun refresh() = controller.refresh()
+
     fun scan() = controller.scan()
 
     fun select(id: String) = controller.select(id)

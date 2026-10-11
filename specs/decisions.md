@@ -91,6 +91,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Status:** Accepted
 - **Why:** The current AndroidX core (1.19) and Compose (1.12) libraries require AGP 9.1+ and compileSdk 37. Staying on AGP 8 would mean pinning year-old libraries.
 - **Consequences:** AGP 9 compiles Kotlin itself, so there's no `kotlin-android` plugin in the app module. That plugin is declared only to pin the Kotlin version.
+- **Consequences:** Targeting API 37 means Android 17's local network protection applies. The app must hold the `ACCESS_LOCAL_NETWORK` runtime permission ("Nearby devices") to reach the server on the LAN; without it, connections just time out. The app asks on first launch, and shows an "Allow" banner if denied.
 
 ### D12: Application id `io.github.daedalus1215.iris`
 
