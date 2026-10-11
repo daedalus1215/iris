@@ -2,6 +2,24 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-10-04 (evening)
+
+**Done**
+- Committed M1 as three commits on `backend` and pushed it.
+- Started M3 on branch `android` (made from `backend`):
+  - Found that this Mac can't build Android apps: Google's `aapt2` is x86-only on Linux, and community ARM builds won't load on the 16 KB-page kernel. APKs build in GitHub Actions instead (D10).
+  - Rebuilt the Android project on AGP 9.4.1 / Gradle 9.8 / Kotlin 2.4.20 / Compose. Current AndroidX requires AGP 9 (D11).
+  - Wrote the app: a `core` Kotlin module (API client, hold-to-repeat, remote state, with tests), a remote screen, a settings dialog, phone volume keys controlling the TV, and dev/prod flavors.
+- The first CI run passed (core tests, both APKs). The APKs are on the [android-dev pre-release](https://github.com/daedalus1215/iris/releases/tag/android-dev).
+
+**Next**
+- You: install Iris Dev on the phone from the release page and try it against this PC's backend.
+- You: run `gh auth login`, so PRs can be opened from here, and so CI logs can be read if a build fails.
+- Open PRs: `backend` into `main` (M1), then `android`.
+
+**Blockers**
+- None.
+
 ## 2026-10-04 (afternoon)
 
 **Done**
