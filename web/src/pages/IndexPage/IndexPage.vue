@@ -43,6 +43,12 @@ const sendCommand = async (command: string) => {
     console.error('Failed to send command:', error)
   }
 }
+
+// Function to send double select command
+const sendDoubleSelect = () => {
+  sendCommand('select')
+  setTimeout(() => sendCommand('select'), 50)
+}
 </script>
 
 <template>
@@ -99,7 +105,7 @@ const sendCommand = async (command: string) => {
                 color="secondary-gradient"
                 label="OK"
                 :disabled="!isConnected"
-                @click="sendCommand('select')"
+                @click="sendDoubleSelect"
               />
               <GlowButton
                 color="secondary-gradient"
