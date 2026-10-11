@@ -53,8 +53,12 @@ interface IrisClient {
 
 /** An open touchpad connection to one Apple TV. */
 interface Touchpad {
-    /** Queues one step of a finger; x and y run 0 to 1000. False once closed: open a new one. */
-    fun send(phase: TouchPhase, x: Int, y: Int): Boolean
+    /**
+     * Queues one step of a finger; x and y run 0 to 1000, and [t] is when, in ms on a steady
+     * clock (uptime on Android). The Apple TV takes a swipe's speed from these times, so they
+     * should be the finger's. False once closed: open a new one.
+     */
+    fun send(phase: TouchPhase, x: Int, y: Int, t: Long): Boolean
 
     fun close()
 }
@@ -243,8 +247,8 @@ class HttpIrisClient(
             },
         )
 
-        override fun send(phase: TouchPhase, x: Int, y: Int): Boolean =
-            !closed && socket.send("""{"phase":"${phase.apiName}","x":$x,"y":$y}""")
+        override fun send(phase: TouchPhase, x: Int, y: Int, t: Long): Boolean =
+            !closed && socket.send("""{"phase":"${phase.apiName}","x":$x,"y":$y,"t":$t}""")
 
         override fun close() {
             closedHere = true

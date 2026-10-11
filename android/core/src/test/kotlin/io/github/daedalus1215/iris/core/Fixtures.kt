@@ -75,13 +75,15 @@ class FakeClient(
     }
 }
 
+data class SentTouch(val phase: TouchPhase, val x: Int, val y: Int, val t: Long)
+
 class FakeTouchpad(val deviceId: String, val onError: (IrisException) -> Unit) : Touchpad {
-    val events = mutableListOf<Triple<TouchPhase, Int, Int>>()
+    val events = mutableListOf<SentTouch>()
     var closed = false
 
-    override fun send(phase: TouchPhase, x: Int, y: Int): Boolean {
+    override fun send(phase: TouchPhase, x: Int, y: Int, t: Long): Boolean {
         if (closed) return false
-        events += Triple(phase, x, y)
+        events += SentTouch(phase, x, y, t)
         return true
     }
 

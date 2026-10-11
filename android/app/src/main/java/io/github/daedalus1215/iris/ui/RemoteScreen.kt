@@ -485,7 +485,7 @@ private fun DPad(
 @Composable
 private fun TouchPad(
     enabled: Boolean,
-    onTouch: (phase: TouchPhase, x: Int, y: Int) -> Unit,
+    onTouch: (phase: TouchPhase, x: Int, y: Int, t: Long) -> Unit,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     modifier: Modifier = Modifier,
@@ -531,17 +531,18 @@ private fun TouchPad(
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
                     val down = awaitFirstDown()
-                    var at = down.position
-                    finger = at
-                    fun send(phase: TouchPhase, position: Offset) = currentOnTouch(
+                    var at = FingerAt(down.position, down.uptimeMillis)
+                    finger = at.position
+                    fun send(phase: TouchPhase, sample: FingerAt) = currentOnTouch(
                         phase,
-                        (position.x / size.width * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE),
-                        (position.y / size.height * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE),
+                        (sample.position.x / size.width * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE),
+                        (sample.position.y / size.height * TOUCH_RANGE).roundToInt().coerceIn(0, TOUCH_RANGE),
+                        sample.time,
                     )
                     try {
-                        val start = awaitGestureStart(down.id, down.position) { position ->
-                            at = position
-                            finger = position
+                        val start = awaitGestureStart(down.id, down.position) { moved ->
+                            at = moved
+                            finger = moved.position
                         }
                         when (start) {
                             GestureStart.TAP -> {
@@ -552,9 +553,9 @@ private fun TouchPad(
                                 view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                                 currentOnLongPress()
                             }
-                            GestureStart.DRAG -> streamDrag(down.id, at) { phase, position ->
-                                finger = position
-                                send(phase, position)
+                            GestureStart.DRAG -> streamDrag(down.id, at) { phase, moved ->
+                                finger = moved.position
+                                send(phase, moved)
                             }
                             GestureStart.CANCEL -> Unit
                         }
@@ -588,13 +589,19 @@ private fun TouchPad(
 private enum class GestureStart { TAP, DRAG, LONG_PRESS, CANCEL }
 
 /**
+ * Where the finger was, and when: [time] is uptime in ms, from the pointer event. The Apple TV
+ * takes a swipe's speed from these times, so they're the finger's, not when they're sent.
+ */
+private data class FingerAt(val position: Offset, val time: Long)
+
+/**
  * Decides what a new touch is: the finger lifts (a tap), moves past touch slop (a drag), or
  * stays put (a long press). [onMove] follows the finger meanwhile.
  */
 private suspend fun AwaitPointerEventScope.awaitGestureStart(
     pointer: PointerId,
     downAt: Offset,
-    onMove: (Offset) -> Unit,
+    onMove: (FingerAt) -> Unit,
 ): GestureStart = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
     var start: GestureStart? = null
     while (start == null) {
@@ -604,7 +611,7 @@ private suspend fun AwaitPointerEventScope.awaitGestureStart(
             // A consumed lift means the system took the gesture over, e.g. for back.
             !change.pressed -> if (change.isConsumed) GestureStart.CANCEL else GestureStart.TAP
             else -> {
-                onMove(change.position)
+                onMove(FingerAt(change.position, change.uptimeMillis))
                 val moved = (change.position - downAt).getDistance() > viewConfiguration.touchSlop
                 if (moved) GestureStart.DRAG else null
             }
@@ -619,21 +626,21 @@ private suspend fun AwaitPointerEventScope.awaitGestureStart(
  */
 private suspend fun AwaitPointerEventScope.streamDrag(
     pointer: PointerId,
-    from: Offset,
-    onTouch: (TouchPhase, Offset) -> Unit,
+    from: FingerAt,
+    onTouch: (TouchPhase, FingerAt) -> Unit,
 ) {
     var at = from
-    var lastSent = 0L
+    var lastSent = from.time
     onTouch(TouchPhase.PRESS, at)
     try {
         while (true) {
             val change = awaitPointerEvent().changes.firstOrNull { it.id == pointer } ?: break
-            at = change.position
+            at = FingerAt(change.position, change.uptimeMillis)
             if (!change.pressed) break
             change.consume()
-            if (change.uptimeMillis - lastSent >= TOUCH_INTERVAL_MS) {
+            if (at.time - lastSent >= TOUCH_INTERVAL_MS) {
                 onTouch(TouchPhase.MOVE, at)
-                lastSent = change.uptimeMillis
+                lastSent = at.time
             }
         }
     } finally {

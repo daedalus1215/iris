@@ -219,18 +219,18 @@ class HttpIrisClientTest {
         server.enqueue(MockResponse.Builder().webSocketUpgrade(touchServer).build())
 
         val pad = client(token = "s3cret").openTouchpad("AA:BB:CC:00:00:01") { throw it }
-        pad.send(TouchPhase.PRESS, 300, 500)
-        pad.send(TouchPhase.MOVE, 450, 520)
-        pad.send(TouchPhase.RELEASE, 700, 500)
+        pad.send(TouchPhase.PRESS, 300, 500, 1000)
+        pad.send(TouchPhase.MOVE, 450, 520, 1016)
+        pad.send(TouchPhase.RELEASE, 700, 500, 1029)
 
-        assertEquals("""{"phase":"press","x":300,"y":500}""", touchServer.received.next())
-        assertEquals("""{"phase":"move","x":450,"y":520}""", touchServer.received.next())
-        assertEquals("""{"phase":"release","x":700,"y":500}""", touchServer.received.next())
+        assertEquals("""{"phase":"press","x":300,"y":500,"t":1000}""", touchServer.received.next())
+        assertEquals("""{"phase":"move","x":450,"y":520,"t":1016}""", touchServer.received.next())
+        assertEquals("""{"phase":"release","x":700,"y":500,"t":1029}""", touchServer.received.next())
         val request = server.takeRequest()
         assertEquals(listOf("api", "devices", "AA:BB:CC:00:00:01", "touch"), request.url.pathSegments)
         assertEquals("Bearer s3cret", request.headers["Authorization"])
         pad.closeAndWait(touchServer)
-        assertFalse(pad.send(TouchPhase.PRESS, 0, 0))
+        assertFalse(pad.send(TouchPhase.PRESS, 0, 0, 0))
     }
 
     @Test
@@ -255,7 +255,7 @@ class HttpIrisClientTest {
         val error = errors.next()
         assertEquals("missing or wrong token", error?.message)
         assertEquals(401, error?.status)
-        assertFalse(pad.send(TouchPhase.PRESS, 0, 0))
+        assertFalse(pad.send(TouchPhase.PRESS, 0, 0, 0))
     }
 
     @Test
