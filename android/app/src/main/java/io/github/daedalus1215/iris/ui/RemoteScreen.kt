@@ -92,6 +92,8 @@ fun RemoteScreen(
     viewModel: RemoteViewModel,
     localNetworkAllowed: Boolean,
     onAllowLocalNetwork: () -> Unit,
+    /** Runs an action once the phone is unlocked, since the remote also shows over the lock screen. */
+    whenUnlocked: (action: () -> Unit) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // First launch, with no server address yet: go straight to settings.
@@ -119,13 +121,13 @@ fun RemoteScreen(
             env = state.env,
             loading = state.loading,
             onScan = viewModel::scan,
-            onPair = state.selected?.let { device -> { viewModel.openPairing(device.id) } },
-            onSettings = { showSettings = true },
+            onPair = state.selected?.let { device -> { whenUnlocked { viewModel.openPairing(device.id) } } },
+            onSettings = { whenUnlocked { showSettings = true } },
             onKeyboard = if (keyboardFocused && keyboardDismissed) ({ keyboardDismissed = false }) else null,
         )
         DevicePicker(state, onSelect = viewModel::select)
         if (localNetworkAllowed) {
-            StatusLine(state, onPair = viewModel::openPairing)
+            StatusLine(state, onPair = { id -> whenUnlocked { viewModel.openPairing(id) } })
         } else {
             LocalNetworkBanner(onAllowLocalNetwork)
         }
