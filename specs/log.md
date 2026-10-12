@@ -8,15 +8,18 @@ Newest first. Add one entry per working session.
 - You asked to reach the app by swiping down, the way music shows up. On branch `shade-controls`, with each commit changing a single file (D22):
   - Core: `BackgroundRemote` sends presses from outside the app to the device picked in the app, keeps the last failure to show, and paces a held volume key. 8 new tests, 61 in total, run on this machine: JDK 21 is installed now.
   - App: `MediaControlsService`, a media session in a foreground service. Its card has play/pause, previous, next, back and home, its title follows the selected TV, and its second line shows why a press failed. The volume keys reach the TV with the app closed.
-  - A setting turns it on (off by default), and asks to show notifications. The app starts the service each time it opens.
+  - A setting turns it off and on, and the app starts the service each time it opens.
   - `RemoteTileService`, a Quick Settings tile that opens the remote.
 - The app can't be built here (D10). CI ran the core tests and built both APKs from the branch, and published them to the `android-dev` pre-release. Nothing has been tried on the phone yet.
+- You then found only "a spot to get into the app" on the lock screen, and asked why the controls would be off, as Apple Music's player just shows up. They were off by default (D22), so what you saw was most likely the tile. Now they're on by default, and the app asks to show notifications when it opens, in the same request as the local network permission.
 
 **Next**
-- You: install the new APK from the `android-dev` release. In Settings, turn on "Controls in the notification shade and on the lock screen", then:
+- You: install the new APK from the `android-dev` release, open Iris and allow notifications, then:
   - swipe down and try the card's buttons, then lock the phone and try them there;
   - close the app and press the volume keys;
   - edit the Quick Settings panel, add the Iris Dev tile, and tap it.
+- If the switch in Settings still shows off (an earlier Save stored it), turn it on.
+- If there's still no card with buttons, connect the phone over wireless debugging (`adb` is installed here now), so the media session and notification can be inspected directly.
 - If the volume keys do nothing with the app closed, see D22's limits: the phone may want a MediaRouter2 route as well.
 - Then open the PR for `shade-controls` and merge.
 
