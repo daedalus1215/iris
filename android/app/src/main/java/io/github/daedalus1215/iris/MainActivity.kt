@@ -28,8 +28,9 @@ class MainActivity : ComponentActivity() {
     private var volumeKeyHeld = false
     private var localNetworkAllowed by mutableStateOf(true)
 
-    private val requestLocalNetwork =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+    private val requestPermissions =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            val granted = results[ACCESS_LOCAL_NETWORK] ?: return@registerForActivityResult
             localNetworkAllowed = granted
             if (granted) viewModel.refresh()
         }
@@ -39,7 +40,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         localNetworkAllowed = hasLocalNetworkPermission()
         if (!localNetworkAllowed && savedInstanceState == null) {
-            requestLocalNetwork.launch(ACCESS_LOCAL_NETWORK)
+            requestPermissions.launch(arrayOf(ACCESS_LOCAL_NETWORK))
         }
         setContent {
             IrisTheme {
@@ -83,7 +84,7 @@ class MainActivity : ComponentActivity() {
     /** Ask again if Android still allows it; otherwise open this app's settings page. */
     private fun askForLocalNetwork() {
         if (shouldShowRequestPermissionRationale(ACCESS_LOCAL_NETWORK)) {
-            requestLocalNetwork.launch(ACCESS_LOCAL_NETWORK)
+            requestPermissions.launch(arrayOf(ACCESS_LOCAL_NETWORK))
         } else {
             startActivity(
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)),
