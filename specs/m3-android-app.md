@@ -34,6 +34,7 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 
 - **Volume keys:** the phone's volume buttons send `volume_up` and `volume_down` while the app is open, if the M1 spike shows volume works. With the media controls on, they work with the app closed too (D22).
 - **Media controls (D22):** a setting puts the selected TV in the notification shade and on the lock screen, like music: play/pause, previous, next, back and home. A Quick Settings tile opens the remote.
+- **Lock screen (D23):** the remote shows over the lock screen, so the tile opens it there without unlocking. Settings and pairing ask to unlock first.
 - **Pairing:** in the app as well as the web remote. Use the link button in the header, or **Pair** under "isn't paired yet". Show PIN puts a PIN on the TV, and you type it into the phone. Companion is enough, so it's one PIN per TV per server; AirPlay is optional.
 - **Architecture:** a single Compose activity, with ViewModel + StateFlow and a repository over the API client.
 
@@ -67,7 +68,9 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 - [ ] Try typing on the phone: a search on each TV
 - [x] Media controls in the notification shade and on the lock screen, with the volume keys working while the app is closed (D22). Core: 8 new tests, 61 in total.
 - [x] A Quick Settings tile that opens the remote (D22)
-- [ ] Try the media controls on the phone: the card's buttons in the shade and on the lock screen, the volume keys with the app closed, and the tile
+- [ ] Try the media controls on the phone: the card's buttons in the shade and on the lock screen, the volume keys with the app closed. On 2026-10-11 they didn't show; find out why over wireless debugging.
+- [x] The remote over the lock screen, opened from the tile, with Settings and pairing behind the unlock (D23). The tile shows its name and the selected TV.
+- [ ] Try the remote over the lock screen on the phone
 
 ### Release
 
