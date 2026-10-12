@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
                     viewModel = viewModel,
                     localNetworkAllowed = localNetworkAllowed,
                     onAllowLocalNetwork = ::askForLocalNetwork,
+                    whenUnlocked = ::whenUnlocked,
                 )
             }
         }
