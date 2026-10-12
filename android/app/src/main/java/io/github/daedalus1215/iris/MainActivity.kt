@@ -1,6 +1,7 @@
 package io.github.daedalus1215.iris
 
 import android.Manifest
+import android.app.KeyguardManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -91,6 +92,24 @@ class MainActivity : ComponentActivity() {
         viewModel.mediaControls &&
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Runs [action] once the phone is unlocked: straight away, or after asking to unlock. For what
+     * shouldn't be open to anyone holding the phone, while the remote shows over the lock screen.
+     */
+    private fun whenUnlocked(action: () -> Unit) {
+        val keyguard = getSystemService(KeyguardManager::class.java)
+        if (!keyguard.isDeviceLocked) {
+            action()
+            return
+        }
+        keyguard.requestDismissKeyguard(
+            this,
+            object : KeyguardManager.KeyguardDismissCallback() {
+                override fun onDismissSucceeded() = action()
+            },
+        )
+    }
 
     /** Ask again if Android still allows it; otherwise open this app's settings page. */
     private fun askForLocalNetwork() {
