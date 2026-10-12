@@ -15,11 +15,8 @@ class RemoteTileService : TileService() {
         }
     }
 
+    // On the lock screen too: the remote shows over it, without unlocking.
     override fun onClick() {
-        if (isLocked) unlockAndRun(::openRemote) else openRemote()
-    }
-
-    private fun openRemote() {
         val intent = MainActivity.intent(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startActivityAndCollapse(PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE))
