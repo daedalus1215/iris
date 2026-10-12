@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
         viewModel.watchKeyboard()
         MediaControlsService.sync(this)
+
     }
 
     // Nothing to touch or type while the app is in the background; the next drag reopens the touchpad.

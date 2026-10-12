@@ -24,7 +24,6 @@ class AppSettings(context: Context) {
     var selectedDeviceName: String?
         get() = prefs.getString(SELECTED_DEVICE_NAME, null)
         set(value) = prefs.edit { putString(SELECTED_DEVICE_NAME, value) }
-
     /** Arrow buttons in place of the touchpad. */
     var arrowButtons: Boolean
         get() = prefs.getBoolean(ARROW_BUTTONS, false)
@@ -45,7 +44,6 @@ class AppSettings(context: Context) {
         prefs.registerOnSharedPreferenceChangeListener(listener)
         return { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
     }
-
     private companion object {
         const val SERVER_URL = "server_url"
         const val TOKEN = "token"

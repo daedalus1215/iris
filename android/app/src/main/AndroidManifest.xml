@@ -12,6 +12,7 @@
     <!-- Android 13+ asks before an app shows notifications, and the media controls are one. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -28,13 +29,13 @@
             android:exported="true"
             android:screenOrientation="portrait"
             android:showWhenLocked="true">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
         <service
             android:name=".MediaControlsService"
             android:exported="false"
