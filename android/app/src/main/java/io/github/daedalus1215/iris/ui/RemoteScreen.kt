@@ -1,6 +1,10 @@
 package io.github.daedalus1215.iris.ui
 
+import android.Manifest
+import android.os.Build
 import android.view.HapticFeedbackConstants
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -88,6 +92,8 @@ fun RemoteScreen(
     viewModel: RemoteViewModel,
     localNetworkAllowed: Boolean,
     onAllowLocalNetwork: () -> Unit,
+    /** Runs an action once the phone is unlocked, since the remote also shows over the lock screen. */
+    whenUnlocked: (action: () -> Unit) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     // First launch, with no server address yet: go straight to settings.
@@ -115,13 +121,13 @@ fun RemoteScreen(
             env = state.env,
             loading = state.loading,
             onScan = viewModel::scan,
-            onPair = state.selected?.let { device -> { viewModel.openPairing(device.id) } },
-            onSettings = { showSettings = true },
+            onPair = state.selected?.let { device -> { whenUnlocked { viewModel.openPairing(device.id) } } },
+            onSettings = { whenUnlocked { showSettings = true } },
             onKeyboard = if (keyboardFocused && keyboardDismissed) ({ keyboardDismissed = false }) else null,
         )
         DevicePicker(state, onSelect = viewModel::select)
         if (localNetworkAllowed) {
-            StatusLine(state, onPair = viewModel::openPairing)
+            StatusLine(state, onPair = { id -> whenUnlocked { viewModel.openPairing(id) } })
         } else {
             LocalNetworkBanner(onAllowLocalNetwork)
         }
@@ -179,13 +185,21 @@ fun RemoteScreen(
         }
     }
 
+    // The media controls are a notification, so turning them on asks to show notifications.
+    // They start whatever the answer, as Android exempts media notifications.
+    val askForNotifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     if (showSettings) {
         SettingsDialog(
             serverUrl = viewModel.serverUrl,
             token = viewModel.token,
             arrowButtons = viewModel.arrowButtons,
-            onSave = { url, token, arrowButtons ->
-                viewModel.saveSettings(url, token, arrowButtons)
+            mediaControls = viewModel.mediaControls,
+            onSave = { url, token, arrowButtons, mediaControls ->
+                val turnedOn = mediaControls && !viewModel.mediaControls
+                if (turnedOn && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    askForNotifications.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+                viewModel.saveSettings(url, token, arrowButtons, mediaControls)
                 showSettings = false
             },
             onDismiss = { showSettings = false },

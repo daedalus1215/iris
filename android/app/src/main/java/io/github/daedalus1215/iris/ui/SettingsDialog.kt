@@ -25,12 +25,14 @@ fun SettingsDialog(
     serverUrl: String,
     token: String,
     arrowButtons: Boolean,
-    onSave: (serverUrl: String, token: String, arrowButtons: Boolean) -> Unit,
+    mediaControls: Boolean,
+    onSave: (serverUrl: String, token: String, arrowButtons: Boolean, mediaControls: Boolean) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var url by rememberSaveable { mutableStateOf(serverUrl) }
     var tokenText by rememberSaveable { mutableStateOf(token) }
     var arrows by rememberSaveable { mutableStateOf(arrowButtons) }
+    var media by rememberSaveable { mutableStateOf(mediaControls) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -56,10 +58,14 @@ fun SettingsDialog(
                     Text("Arrow buttons instead of the touchpad", Modifier.weight(1f))
                     Switch(checked = arrows, onCheckedChange = { arrows = it })
                 }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Controls in the notification shade and on the lock screen", Modifier.weight(1f))
+                    Switch(checked = media, onCheckedChange = { media = it })
+                }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(url, tokenText, arrows) }, enabled = url.isNotBlank()) {
+            TextButton(onClick = { onSave(url, tokenText, arrows, media) }, enabled = url.isNotBlank()) {
                 Text("Save")
             }
         },

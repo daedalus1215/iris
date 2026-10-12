@@ -217,3 +217,35 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - Starting in the middle makes where the thumb lands irrelevant, and gives left and right swipes the same room. Before, the many left swipes that started near the middle ran off the touchpad's left edge and pinned at 0. Apple's iPhone remote very likely works the same way.
   - One scale for both axes also keeps on-screen angles true on the TV. Before, the pad's height and width were each stretched to 1000.
 - **Not done:** the scripted test (five swipes from different start points, with you watching) wasn't run. Your observation pointed at the start position first. If left swipes still misbehave, run it next; it's in the 2026-10-05 log.
+
+### D22: Media controls in the notification shade, and a Quick Settings tile
+
+- **Date:** 2026-10-11
+- **Status:** Accepted
+- **Decision:**
+  - A setting, on by default, puts the selected Apple TV where music apps show up: the notification shade and the lock screen. It's a media session in a foreground service, with play/pause, previous and next, plus back and home in the two spare buttons. Tapping the card opens the remote.
+  - The session plays remotely, so the phone's volume keys change the TV's volume with the app closed, as long as nothing on the phone itself is playing. A held key repeats every 40 ms or so; presses are dropped while one is on its way and for 150 ms after, the pace of the app's held buttons.
+  - The session always says it's playing. The TV doesn't report whether it is, and Android only hands the volume keys to a playing session. So the middle button always shows pause, and sends `play_pause` either way.
+  - Each press reads the selected device and the server from the app's settings, so the card follows the app without being told. Its title is the device's name, and its second line says why the last press failed, until one gets through.
+  - It's a `connectedDevice` foreground service rather than `mediaPlayback`: Iris drives a device over the network and plays nothing on the phone. Android 14+ asks such apps to hold `CHANGE_NETWORK_STATE`.
+  - The app starts the service each time it opens, since Android only allows that from the front. After a reboot, the card is back once the app has been opened.
+  - A Quick Settings tile, named after the app, opens the remote, unlocking first if needed.
+- **Why:** you asked to reach the app by swiping down, the way music shows up. A media session is what puts music there, and it brings the volume keys along. The tile is a cheap second way in.
+- **Limits:**
+  - The card has room for five buttons, so there's no d-pad or touchpad on it.
+  - It shows the device, not what's playing, because the backend doesn't read now-playing yet. pyatv can, so that's a possible follow-up.
+  - Since Android 13, some phones only hand the volume keys to a remote session that also has a matching MediaRouter2 route (a device setting, `config_volumeAdjustmentForRemoteGroupSessions`). If the volume keys do nothing with the app closed, that's the likely cause, and the fix would be a route provider.
+  - While the setting is on, the app asks to show notifications when it opens (with the local network permission), and again when the setting is turned back on. Android exempts media notifications, so the card should appear even if you say no.
+- **On by default:** it was off at first, since the card stays up for good and takes the volume keys, unlike a music app's player. You expected it to just be there, as Apple Music's is, so it's on, and Settings turns it off.
+
+### D23: The remote shows over the lock screen
+
+- **Date:** 2026-10-11
+- **Status:** Accepted
+- **Decision:**
+  - The remote's activity shows over the lock screen (`showWhenLocked` in the manifest). The Quick Settings tile opens it there without unlocking: swipe down on the lock screen, tap Iris, and the whole remote is there. Google's TV remote tile on Pixels works the same way.
+  - Settings and pairing ask to unlock first, so nobody holding the phone can change the server or the token, or pair a TV.
+  - The tile is labelled with the app's name, with the selected TV's name under it in place of Android's "Off".
+- **Why:** you wanted to reach the remote by swiping down, and the media controls (D22) didn't show up on your phone. This gives you the whole remote rather than five buttons, and doesn't depend on Android's media card.
+- **Side effect:** if the phone locks while the remote is open, waking it shows the remote again rather than the lock screen. Back or Home goes to the lock screen.
+- **Why the manifest, not `setShowWhenLocked()` at run time:** System UI decides whether a tile's or a notification's activity needs the unlock by reading the manifest.

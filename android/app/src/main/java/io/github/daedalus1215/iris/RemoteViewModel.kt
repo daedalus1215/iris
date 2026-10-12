@@ -14,6 +14,7 @@ import io.github.daedalus1215.iris.core.TouchPhase
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.launch
 
 class RemoteViewModel(application: Application) : AndroidViewModel(application) {
@@ -29,10 +30,15 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
     val token: String get() = settings.token
     var arrowButtons by mutableStateOf(settings.arrowButtons)
         private set
+    var mediaControls by mutableStateOf(settings.mediaControls)
+        private set
 
     init {
         viewModelScope.launch {
             state.map { it.selectedId }.distinctUntilChanged().collect { settings.selectedDeviceId = it }
+        }
+        viewModelScope.launch {
+            state.mapNotNull { it.selected?.name }.distinctUntilChanged().collect { settings.selectedDeviceName = it }
         }
         if (settings.serverUrl.isNotBlank()) controller.refresh()
     }
@@ -67,11 +73,14 @@ class RemoteViewModel(application: Application) : AndroidViewModel(application) 
 
     fun submitPin(pin: String) = controller.submitPin(pin)
 
-    fun saveSettings(serverUrl: String, token: String, arrowButtons: Boolean) {
+    fun saveSettings(serverUrl: String, token: String, arrowButtons: Boolean, mediaControls: Boolean) {
         settings.serverUrl = serverUrl.trim()
         settings.token = token.trim()
         settings.arrowButtons = arrowButtons
         this.arrowButtons = arrowButtons
+        settings.mediaControls = mediaControls
+        this.mediaControls = mediaControls
+        MediaControlsService.sync(getApplication())
         controller.useClient(HttpIrisClient(settings.serverUrl, settings.token))
     }
 

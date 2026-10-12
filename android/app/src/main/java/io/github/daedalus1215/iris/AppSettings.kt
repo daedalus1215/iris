@@ -1,6 +1,7 @@
 package io.github.daedalus1215.iris
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.core.content.edit
 
 /** What the app remembers between launches. */
@@ -19,15 +20,36 @@ class AppSettings(context: Context) {
         get() = prefs.getString(SELECTED_DEVICE, null)
         set(value) = prefs.edit { putString(SELECTED_DEVICE, value) }
 
+    /** The selected device's name, for showing outside the app. */
+    var selectedDeviceName: String?
+        get() = prefs.getString(SELECTED_DEVICE_NAME, null)
+        set(value) = prefs.edit { putString(SELECTED_DEVICE_NAME, value) }
     /** Arrow buttons in place of the touchpad. */
     var arrowButtons: Boolean
         get() = prefs.getBoolean(ARROW_BUTTONS, false)
         set(value) = prefs.edit { putBoolean(ARROW_BUTTONS, value) }
 
+    /** Media controls in the notification shade and on the lock screen. */
+    var mediaControls: Boolean
+        get() = prefs.getBoolean(MEDIA_CONTROLS, true)
+        set(value) = prefs.edit { putBoolean(MEDIA_CONTROLS, value) }
+
+    /**
+     * Calls [onChange] on the main thread whenever a setting changes, here or through another
+     * [AppSettings], until the returned function is called. Keep that function: Android only
+     * holds on to the listener weakly.
+     */
+    fun observe(onChange: () -> Unit): () -> Unit {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, _ -> onChange() }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        return { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     private companion object {
         const val SERVER_URL = "server_url"
         const val TOKEN = "token"
         const val SELECTED_DEVICE = "selected_device"
+        const val SELECTED_DEVICE_NAME = "selected_device_name"
         const val ARROW_BUTTONS = "arrow_buttons"
+        const val MEDIA_CONTROLS = "media_controls"
     }
 }
