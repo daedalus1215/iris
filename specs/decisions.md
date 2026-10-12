@@ -237,3 +237,15 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - Since Android 13, some phones only hand the volume keys to a remote session that also has a matching MediaRouter2 route (a device setting, `config_volumeAdjustmentForRemoteGroupSessions`). If the volume keys do nothing with the app closed, that's the likely cause, and the fix would be a route provider.
   - While the setting is on, the app asks to show notifications when it opens (with the local network permission), and again when the setting is turned back on. Android exempts media notifications, so the card should appear even if you say no.
 - **On by default:** it was off at first, since the card stays up for good and takes the volume keys, unlike a music app's player. You expected it to just be there, as Apple Music's is, so it's on, and Settings turns it off.
+
+### D23: The remote shows over the lock screen
+
+- **Date:** 2026-10-11
+- **Status:** Accepted
+- **Decision:**
+  - The remote's activity shows over the lock screen (`showWhenLocked` in the manifest). The Quick Settings tile opens it there without unlocking: swipe down on the lock screen, tap Iris, and the whole remote is there. Google's TV remote tile on Pixels works the same way.
+  - Settings and pairing ask to unlock first, so nobody holding the phone can change the server or the token, or pair a TV.
+  - The tile is labelled with the app's name, with the selected TV's name under it in place of Android's "Off".
+- **Why:** you wanted to reach the remote by swiping down, and the media controls (D22) didn't show up on your phone. This gives you the whole remote rather than five buttons, and doesn't depend on Android's media card.
+- **Side effect:** if the phone locks while the remote is open, waking it shows the remote again rather than the lock screen. Back or Home goes to the lock screen.
+- **Why the manifest, not `setShowWhenLocked()` at run time:** System UI decides whether a tile's or a notification's activity needs the unlock by reading the manifest.
