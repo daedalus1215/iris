@@ -223,7 +223,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Date:** 2026-10-11
 - **Status:** Accepted
 - **Decision:**
-  - A setting, off by default, puts the selected Apple TV where music apps show up: the notification shade and the lock screen. It's a media session in a foreground service, with play/pause, previous and next, plus back and home in the two spare buttons. Tapping the card opens the remote.
+  - A setting, on by default, puts the selected Apple TV where music apps show up: the notification shade and the lock screen. It's a media session in a foreground service, with play/pause, previous and next, plus back and home in the two spare buttons. Tapping the card opens the remote.
   - The session plays remotely, so the phone's volume keys change the TV's volume with the app closed, as long as nothing on the phone itself is playing. A held key repeats every 40 ms or so; presses are dropped while one is on its way and for 150 ms after, the pace of the app's held buttons.
   - The session always says it's playing. The TV doesn't report whether it is, and Android only hands the volume keys to a playing session. So the middle button always shows pause, and sends `play_pause` either way.
   - Each press reads the selected device and the server from the app's settings, so the card follows the app without being told. Its title is the device's name, and its second line says why the last press failed, until one gets through.
@@ -235,4 +235,5 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
   - The card has room for five buttons, so there's no d-pad or touchpad on it.
   - It shows the device, not what's playing, because the backend doesn't read now-playing yet. pyatv can, so that's a possible follow-up.
   - Since Android 13, some phones only hand the volume keys to a remote session that also has a matching MediaRouter2 route (a device setting, `config_volumeAdjustmentForRemoteGroupSessions`). If the volume keys do nothing with the app closed, that's the likely cause, and the fix would be a route provider.
-  - Turning the setting on asks to show notifications. Android exempts media notifications, so the card should appear even if you say no.
+  - While the setting is on, the app asks to show notifications when it opens (with the local network permission), and again when the setting is turned back on. Android exempts media notifications, so the card should appear even if you say no.
+- **On by default:** it was off at first, since the card stays up for good and takes the volume keys, unlike a music app's player. You expected it to just be there, as Apple Music's is, so it's on, and Settings turns it off.
