@@ -22,10 +22,12 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Iris">
+        <!-- Shows over the lock screen, so the tile opens the remote without unlocking (D23). -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:screenOrientation="portrait">
+            android:screenOrientation="portrait"
+            android:showWhenLocked="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
