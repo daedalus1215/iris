@@ -2,7 +2,7 @@
 
 Newest first. Add one entry per working session.
 
-## 2026-10-11 (media controls)
+## 2026-10-11 (media controls, remote over the lock screen)
 
 **Done**
 - You asked to reach the app by swiping down, the way music shows up. On branch `shade-controls`, with each commit changing a single file (D22):
@@ -12,14 +12,16 @@ Newest first. Add one entry per working session.
   - `RemoteTileService`, a Quick Settings tile that opens the remote.
 - The app can't be built here (D10). CI ran the core tests and built both APKs from the branch, and published them to the `android-dev` pre-release. Nothing has been tried on the phone yet.
 - You then found only "a spot to get into the app" on the lock screen, and asked why the controls would be off, as Apple Music's player just shows up. They were off by default (D22), so what you saw was most likely the tile. Now they're on by default, and the app asks to show notifications when it opens, in the same request as the local network permission.
+- You still didn't see the media controls, found the tile had no label, and chose the remote over the lock screen (D23), one file per commit:
+  - The remote's activity shows over the lock screen, and the tile opens it there without unlocking.
+  - Settings and pairing ask to unlock first.
+  - The tile sets its label, the app's name, and shows the selected TV under it.
+  - CI passed and published the APKs to `android-dev`, built from `0af0d8e`. Not yet tried on the phone.
 
 **Next**
-- You: install the new APK from the `android-dev` release, open Iris and allow notifications, then:
-  - swipe down and try the card's buttons, then lock the phone and try them there;
-  - close the app and press the volume keys;
-  - edit the Quick Settings panel, add the Iris Dev tile, and tap it.
-- If the switch in Settings still shows off (an earlier Save stored it), turn it on.
-- If there's still no card with buttons, connect the phone over wireless debugging (`adb` is installed here now), so the media session and notification can be inspected directly.
+- You: install the new APK from the `android-dev` release, lock the phone, swipe down and tap the Iris Dev tile. The remote should open over the lock screen. Try a few buttons, then Settings, which should ask to unlock.
+- If the tile is a small square with no name, that's how newer Android draws small tiles. In the panel's edit mode it can be made wide, which shows the name.
+- Media controls: still not showing. Check that the switch in Settings is on. If it is, connect the phone over wireless debugging (`adb` is installed here now), so the media session and notification can be inspected directly.
 - If the volume keys do nothing with the app closed, see D22's limits: the phone may want a MediaRouter2 route as well.
 - Then open the PR for `shade-controls` and merge.
 
