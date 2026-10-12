@@ -8,9 +8,14 @@ import android.service.quicksettings.TileService
 /** A Quick Settings tile that opens the remote. */
 class RemoteTileService : TileService() {
     override fun onStartListening() {
-        // A button rather than a switch, so it never shows as on.
         qsTile?.apply {
+            // A button rather than a switch, so it never shows as on.
             state = Tile.STATE_INACTIVE
+            label = getString(R.string.app_name)
+            // The TV it controls, in place of Android's "Off", which reads as if Iris were off.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                subtitle = AppSettings(this@RemoteTileService).selectedDeviceName ?: "Remote"
+            }
             updateTile()
         }
     }
