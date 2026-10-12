@@ -32,7 +32,7 @@ class AppSettings(context: Context) {
 
     /** Media controls in the notification shade and on the lock screen. */
     var mediaControls: Boolean
-        get() = prefs.getBoolean(MEDIA_CONTROLS, false)
+        get() = prefs.getBoolean(MEDIA_CONTROLS, true)
         set(value) = prefs.edit { putBoolean(MEDIA_CONTROLS, value) }
 
     /**
