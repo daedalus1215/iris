@@ -1,5 +1,6 @@
 package io.github.daedalus1215.iris
 
+import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -39,8 +40,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         localNetworkAllowed = hasLocalNetworkPermission()
-        if (!localNetworkAllowed && savedInstanceState == null) {
-            requestPermissions.launch(arrayOf(ACCESS_LOCAL_NETWORK))
+        if (savedInstanceState == null) {
+            val missing = listOfNotNull(
+                ACCESS_LOCAL_NETWORK.takeUnless { localNetworkAllowed },
+                // The media controls live in a notification.
+                Manifest.permission.POST_NOTIFICATIONS.takeIf { needsNotificationPermission() },
+            )
+            if (missing.isNotEmpty()) requestPermissions.launch(missing.toTypedArray())
         }
         setContent {
             IrisTheme {
@@ -80,6 +86,11 @@ class MainActivity : ComponentActivity() {
     private fun hasLocalNetworkPermission(): Boolean =
         Build.VERSION.SDK_INT < ANDROID_17 ||
             checkSelfPermission(ACCESS_LOCAL_NETWORK) == PackageManager.PERMISSION_GRANTED
+
+    private fun needsNotificationPermission(): Boolean =
+        viewModel.mediaControls &&
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
 
     /** Ask again if Android still allows it; otherwise open this app's settings page. */
     private fun askForLocalNetwork() {
