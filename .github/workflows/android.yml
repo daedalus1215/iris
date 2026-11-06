@@ -1,14 +1,7 @@
 name: Android
 
+# Manual only (D24): Actions → Run workflow, or `gh workflow run android.yml --ref <branch>`.
 on:
-  push:
-    paths:
-      - "android/**"
-      - ".github/workflows/android.yml"
-  pull_request:
-    paths:
-      - "android/**"
-      - ".github/workflows/android.yml"
   workflow_dispatch:
 
 concurrency:
@@ -68,7 +61,6 @@ jobs:
 
       # One rolling pre-release, so the phone can always install the newest build from the same page.
       - name: Publish the dev build release
-        if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
