@@ -82,7 +82,7 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Consequences:**
   - The app's logic lives in `android/core`, a plain Kotlin build that compiles and tests here without the Android SDK (`./gradlew -p core test`).
   - The `app` module only compiles in CI.
-  - Every push that touches `android/` publishes both APKs to the rolling `android-dev` pre-release, which the phone installs from.
+  - Each run of the Android workflow publishes both APKs to the rolling `android-dev` pre-release, which the phone installs from. Since D24, a run only happens when started by hand.
 - **Revisit:** if the home-lab host (x86) becomes a faster place to build.
 
 ### D11: AGP 9 with compileSdk 37
@@ -249,3 +249,13 @@ Newest at the bottom. A status is **Accepted** (agreed with you), **Proposed** (
 - **Why:** you wanted to reach the remote by swiping down, and the media controls (D22) didn't show up on your phone. This gives you the whole remote rather than five buttons, and doesn't depend on Android's media card.
 - **Side effect:** if the phone locks while the remote is open, waking it shows the remote again rather than the lock screen. Back or Home goes to the lock screen.
 - **Why the manifest, not `setShowWhenLocked()` at run time:** System UI decides whether a tile's or a notification's activity needs the unlock by reading the manifest.
+
+### D24: The Android workflow runs only when started by hand
+
+- **Date:** 2026-11-06
+- **Status:** Accepted
+- **Decision:** `.github/workflows/android.yml` no longer runs on pushes or pull requests. Start it with Actions → Run workflow, or `gh workflow run android.yml --ref <branch>`. Each run still tests `core`, builds both APKs and publishes them to `android-dev`.
+- **Why:** you asked for app builds to run only when you start them, to keep GitHub Actions usage and its costs down, across all your projects.
+- **Consequences:**
+  - Pushing a branch builds nothing. Since the app only builds in CI (D10), run the workflow on the branch to get an APK.
+  - Pull requests get no Android check. Run the workflow on the branch before merging.
