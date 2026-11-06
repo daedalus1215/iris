@@ -44,6 +44,7 @@ Server URLs come from `gradle.properties` or `local.properties` and can be chang
 
 - [x] Decide where APKs get built: GitHub Actions, because this Mac can't run `aapt2` (D10)
 - [x] CI: core tests and both APKs on every push to `android/`, published to the rolling [`android-dev` pre-release](https://github.com/daedalus1215/iris/releases/tag/android-dev)
+- [x] CI runs only when started by hand, no longer on every push (D24, 2026-11-06)
 - [x] JDK 21 on this Mac for running core tests locally (found installed on 2026-10-11)
 - [ ] Optional: install over `adb` (wireless debugging) instead of from the release page
 
