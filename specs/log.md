@@ -2,6 +2,18 @@
 
 Newest first. Add one entry per working session.
 
+## 2026-11-06 (Android CI only by hand)
+
+**Done**
+- You asked for app builds to run in GitHub Actions only when you start them, to keep costs down. On branch `manual-ci`, `android.yml` lost its push and pull request triggers (D24). Starting it by hand still tests `core`, builds both APKs and publishes them to `android-dev`. D10 and M3's tooling tasks now say so.
+
+**Next**
+- You: commit, open the PR for `manual-ci` and merge. Once this is on `main`, pushes stop building.
+- To get an APK from a branch from now on: `gh workflow run android.yml --ref <branch>`.
+
+**Blockers**
+- None.
+
 ## 2026-10-11 (media controls, remote over the lock screen)
 
 **Done**
